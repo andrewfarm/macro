@@ -18,7 +18,7 @@ function randFloat(min, max) {
 class BlackHole {
         constructor(pos, vel) {
                 this.pos = pos;
-                this.vel = {x: 0.0, y: 0.0, z: 0.0};
+                this.vel = vel;
                 this.acc = {x: 0.0, y: 0.0, z: 0.0};
         }
 }
