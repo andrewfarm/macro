@@ -16,10 +16,9 @@ function randFloat(min, max) {
 }
 
 class BlackHole {
-        constructor(pos, vel) {
-                this.pos = pos;
-                this.vel = vel;
-                this.acc = {x: 0.0, y: 0.0, z: 0.0};
+        constructor() {
+                this.pos = vec3.random(vec3.create(), INITIAL_BOUNDS);
+                this.vel = vec3.random(vec3.create(), INITIAL_SPEED_LIMIT);
         }
 }
 
@@ -53,17 +52,7 @@ class Universe {
                 var starSpeed;
                 var starVelX, starVelY, starVelZ;
                 for (var i = 0; i < galaxyCount; i++) {
-                        this.blackHoles[i] = new BlackHole(
-                                {
-                                        x: randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS),
-                                        y: randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS),
-                                        z: randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS)
-                                },
-                                {
-                                        x: randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT),
-                                        y: randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT),
-                                        z: randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS)
-                                });
+                        this.blackHoles[i] = new BlackHole();
                         
                         //generate stars
                         galaxyRadius = galaxySizes[i] * 0.05; //TODO
@@ -104,13 +93,54 @@ class Universe {
         }
         
         nextFrame() {
-                console.log('next frame');
+                const gl = this.gl;
+                gl.enable(gl.DEPTH_TEST);
+                gl.depthFunc(gl.LESS);
+                gl.disable(gl.STENCIL_TEST);
+                
+                this.draw();
+                this.update();
+        }
+        
+        draw() {
+                this.drawStars();
+        }
+        
+        drawStars() {
+                //TODO method stub
+        }
+        
+        update() {
+                this.updateBlackHoles();
+                this.updateStars();
+        }
+        
+        updateBlackHoles() {
+                var acc;
+                for (var i = 0; i < this.blackHoles.length; i++) {
+                        for (var j = i + 1; j < this.blackHoles.length; i++) {
+                                acc = vec3.create();
+                                vec3.sub(acc, this.blackHoles[i].pos, this.blackHoles[j].pos);
+                                vec3.scale(acc, BLACK_HOLE_GRAVITY /
+                                        (length(acc) * squaredLength(acc)));
+                                vec3.add(this.blackHoles[j].vel, this.blackHoles[j].vel, acc);
+                                vec3.sub(this.blackHoles[i].vel, this.blackHoles[i].vel, acc);
+                        }
+                }
+                
+                for (var bh of this.blackHoles) {
+                        vec3.add(bh.pos, bh.pos, bh.vel);
+                }
+        }
+        
+        updateStars() {
+                //TODO method stub
         }
 }
 
 /*
  The code below contains utility functions for common WebGL features.
- It comes from the GitHub repository
+ It is from the GitHub repository
  https://github.com/mapbox/webgl-wind
  and is licensed under the
  
