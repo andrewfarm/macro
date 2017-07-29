@@ -7,6 +7,46 @@ const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 1.0;
 const BLACK_HOLE_GRAVITY = 1.0;
 
+const STAR_VERT = '\
+void main() {\n\
+        gl_Position = vec4(0.0);\n\
+}\n\
+';
+
+const STAR_FRAG = '\
+precision mediump float;\n\
+\n\
+varying vec2 v_tex_pos;\n\
+\n\
+void main() {\n\
+        gl_FragColor = vec4(v_tex_pos, 1.0, 1.0);\n\
+}\n\
+';
+
+const QUAD_VERT = '\
+precision mediump float;\n\
+\n\
+attribute vec2 a_pos;\n\
+\n\
+varying vec2 v_tex_pos;\n\
+\n\
+void main() {\n\
+        v_tex_pos = a_pos;\n\
+        gl_Position = vec4(1.0 - 2.0 * a_pos, 0, 1);\n\
+}\n\
+';
+
+const STAR_UPDATE_FRAG = '\
+\n\
+uniform sampler2D u_star_pos;\n\
+uniform sampler2D u_star_vel;\n\
+\n\
+varying vec2 v_tex_pos;\n\
+\n\
+void main() {\n\
+}\n\
+';
+
 function randInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -25,8 +65,15 @@ class BlackHole {
 class Universe {
         constructor(gl) {
                 this.gl = gl;
+                
                 this.quadBuffer = createBuffer(gl, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
                 this.framebuffer = gl.createFramebuffer();
+                
+//                this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
+//                this.starUpdateShaderProgram = createProgram(
+//                        gl, QUAD_VERT, STAR_UPDATE_FRAG);
+                
+                this.testScreenShaderProgram = createProgram(gl, QUAD_VERT, STAR_FRAG);
                 
                 this.starCount = 0;
                 this.blackHoles = [];
@@ -103,7 +150,17 @@ class Universe {
         }
         
         draw() {
-                this.drawStars();
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                
+//                this.drawStars();
+                
+                const gl = this.gl;
+                const program = this.testScreenShaderProgram;
+                gl.useProgram(program.program);
+                
+                bindAttribute(gl, this.quadBuffer, program.a_pos, 2);
+                
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
         
         drawStars() {
