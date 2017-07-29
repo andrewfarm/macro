@@ -7,16 +7,34 @@ const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 1.0;
 const BLACK_HOLE_GRAVITY = 1.0;
 
+const BH_VERT = '\
+uniform mat4 u_mvp_matrix;\n\
+\n\
+attribute vec3 a_pos;\n\
+\n\
+void main() {\n\
+        gl_PointSize = 20.0;\n\
+        gl_Position = vec4(a_pos, 1.0);\n\
+}\n\
+';
+
+const BH_FRAG = '\
+precision mediump float;\n\
+\n\
+void main() {\n\
+        gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n\
+}\n\
+';
+
 const STAR_VERT = '\
 void main() {\n\
+        gl_PointSize = 20.0;\n\
         gl_Position = vec4(0.0);\n\
 }\n\
 ';
 
 const STAR_FRAG = '\
 precision mediump float;\n\
-\n\
-varying vec2 v_tex_pos;\n\
 \n\
 void main() {\n\
         gl_FragColor = vec4(v_tex_pos, 1.0, 1.0);\n\
@@ -66,14 +84,27 @@ class Universe {
         constructor(gl) {
                 this.gl = gl;
                 
-                this.quadBuffer = createBuffer(gl, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
+                this.quadBuffer = createBuffer(gl, new Float32Array(
+                        [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
                 this.framebuffer = gl.createFramebuffer();
                 
+                this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
 //                this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
 //                this.starUpdateShaderProgram = createProgram(
 //                        gl, QUAD_VERT, STAR_UPDATE_FRAG);
                 
-                this.testScreenShaderProgram = createProgram(gl, QUAD_VERT, STAR_FRAG);
+                this.modelMatrix = mat4.identity(mat4.create());
+                this.viewMatrix = mat4.lookAt(mat4.create(),
+                        vec3.fromValues(0.0, 0.0, INITIAL_BOUNDS),
+                        vec3.fromValues(0.0, 0.0, 0.0),
+                        vec3.fromValues(0.0, 1.0, 0.0));
+                this.projectionMatrix = mat4.perspective(mat4.create(),
+                        Math.PI / 3.0, window.innerWidth / window.innerHeight, 1.0, 10000.0);
+                
+                this.mvpMatrix = mat4.multiply(
+                        mat4.create(), this.viewMatrix, this.modelMatrix);
+                this.mvpMatrix = mat4.multiply(
+                        this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
                 
                 this.starCount = 0;
                 this.blackHoles = [];
@@ -140,27 +171,51 @@ class Universe {
         }
         
         nextFrame() {
-                const gl = this.gl;
-                gl.enable(gl.DEPTH_TEST);
-                gl.depthFunc(gl.LESS);
-                gl.disable(gl.STENCIL_TEST);
-                
                 this.draw();
                 this.update();
         }
         
         draw() {
-                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                const gl = this.gl;
+                gl.enable(gl.DEPTH_TEST);
+                gl.depthFunc(gl.LESS);
+                gl.disable(gl.STENCIL_TEST);
                 
+                gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+                gl.clearColor(1.0, 0.5, 0.0, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                
+//                this.drawBlackHoles();
 //                this.drawStars();
                 
+//                const gl = this.gl;
+//                const program = this.testScreenShaderProgram;
+//                gl.useProgram(program.program);
+//                
+//                bindAttribute(gl, this.quadBuffer, program.a_pos, 2);
+//                
+//                gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+        
+        drawBlackHoles() {
                 const gl = this.gl;
-                const program = this.testScreenShaderProgram;
-                gl.useProgram(program.program);
                 
-                bindAttribute(gl, this.quadBuffer, program.a_pos, 2);
+                var blackHolePositions = new Float32Array(this.blackHoles.length * 3);
+                var arrayOffset = 0;
+                for (var bh of this.blackHoles) {
+                        blackHolePositions[arrayOffset++] = bh.pos[0];
+                        blackHolePositions[arrayOffset++] = bh.pos[1];
+                        blackHolePositions[arrayOffset++] = bh.pos[2];
+                }
+                var blackHolePosBuffer = createBuffer(gl, blackHolePositions);
                 
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                gl.useProgram(this.blackHoleShaderProgram.program);
+                gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
+                                    false, this.mvpMatrix);
+                bindAttribute(gl, blackHolePosBuffer, this.blackHoleShaderProgram.a_pos, 3);
+                gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
+                
+                gl.deleteBuffer(blackHolePosBuffer);
         }
         
         drawStars() {
