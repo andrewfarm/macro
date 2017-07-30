@@ -35,10 +35,9 @@ uniform float u_star_res;\n\
 \n\
 attribute float a_index;\n\
 \n\
-\n\
 float colorToFloat32(vec4 color) {\n\
-        int integer  = int(floor(color.r * 255.0)) * 255 + int(floor(color.g * 255.0));\n\
-        int fraction = int(floor(color.b * 255.0)) * 255 + int(floor(color.a * 255.0));\n\
+        int integer  = int(floor(color.g * 255.0)) * 256 + int(floor(color.r * 255.0)) - 32768;\n\
+        int fraction = int(floor(color.a * 255.0)) * 256 + int(floor(color.b * 255.0));\n\
         return float(integer) + (float(fraction) / 65535.0);\n\
 }\n\
 \n\
@@ -46,10 +45,10 @@ void main() {\n\
         vec4 xColor = texture2D(u_star_pos, vec2((a_index) / u_star_res, 0.0));\n\
         vec4 yColor = texture2D(u_star_pos, vec2((a_index + 1.0) / u_star_res, 0.0));\n\
         vec4 zColor = texture2D(u_star_pos, vec2((a_index + 2.0) / u_star_res, 0.0));\n\
-        gl_Position = u_mvp_matrix * vec4(\n\
+        gl_Position = u_mvp_matrix * vec4(1.0 * vec3(\n\
                 colorToFloat32(xColor),\n\
                 colorToFloat32(yColor),\n\
-                colorToFloat32(zColor),\n\
+                colorToFloat32(zColor)),\n\
                 1.0);\n\
         gl_PointSize = 2000.0 / gl_Position.z;\n\
 }\n\
@@ -98,18 +97,25 @@ function randFloat(min, max) {
 function storeFloatAsFixed32(buf, offset /* in floats */, f) {
         const bufView = new Uint16Array(buf);
         var integer = Math.floor(f);
-        if (integer > 0xFFFF) {
-                throw 'value too big';
+        if ((integer < -0x8000) || (integer > 0x7FFF)) {
+                throw 'value too big: ' + integer + ': must be in the range  [-32768, 32768)';
         }
         var fraction = f - integer;
-        bufView[offset * 2] = integer;
+        bufView[offset * 2] = integer + 0x8000;
         bufView[offset * 2 + 1] = Math.floor(fraction * 0xFFFF);
+        console.log('stored value ' + f + ': integer: ' + (integer + 0x8000) + ', fraction: ' + Math.floor(fraction * 0xFFFF) + '/65536');
 }
 
 class BlackHole {
         constructor() {
-                this.pos = vec3.random(vec3.create(), randFloat(0, INITIAL_BOUNDS));
-                this.vel = vec3.random(vec3.create(), randFloat(0, INITIAL_SPEED_LIMIT));
+                this.pos = vec3.fromValues(
+                        randFloat(0, INITIAL_BOUNDS),
+                        randFloat(0, INITIAL_BOUNDS),
+                        randFloat(0, INITIAL_BOUNDS));
+                this.vel = vec3.fromValues(
+                        randFloat(0, INITIAL_SPEED_LIMIT),
+                        randFloat(0, INITIAL_SPEED_LIMIT),
+                        randFloat(0, INITIAL_SPEED_LIMIT));
         }
 }
 
@@ -142,6 +148,15 @@ class Universe {
                 this.starCount = 0;
                 this.blackHoles = [];
                 this.genesis();
+                
+//                //test
+//                var arraybuf = new ArrayBuffer(4);
+//                var originalValue = 32767.5;
+//                storeFloatAsFixed32(arraybuf, 0, originalValue);
+//                console.log('original value', originalValue);
+//                var view = new Uint16Array(arraybuf);
+//                console.log('integer', view[0]);
+//                console.log('fraction', view[1]);
         }
         
         genesis() {
@@ -172,7 +187,7 @@ class Universe {
                         this.blackHoles[i] = new BlackHole();
                         
                         //generate stars
-                        galaxyRadius = galaxySizes[i] * 0.1; //TODO
+                        galaxyRadius = galaxySizes[i] * 0.2; //TODO
                         for (var j = 0; j < galaxySizes[i]; j++) {
                                 starDist = randFloat(0, galaxyRadius);
                                 starAngle = randFloat(0, 2.0 * Math.PI);
@@ -207,6 +222,7 @@ class Universe {
                 //create views of buffers as Uint8 arrays
                 const starPosUint8 = new Uint8Array(starPosBuf);
                 const starVelUint8 = new Uint8Array(starVelBuf);
+                console.log('starPosUint8', starPosUint8);
                 
                 //store star states in textures
                 const gl = this.gl;
