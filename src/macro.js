@@ -1,11 +1,11 @@
-const MIN_GALAXIES = 1;
-const MAX_GALAXIES = 1;
+const MIN_GALAXIES = 2;
+const MAX_GALAXIES = 2;
 const MIN_STARS_IN_GALAXY = 1000;
 const MAX_STARS_IN_GALAXY = 1000;
 
 const INITIAL_BOUNDS = 500.0;
-const INITIAL_SPEED_LIMIT = 1.0;
-const BLACK_HOLE_GRAVITY = 1.0;
+const INITIAL_SPEED_LIMIT = 2.0;
+const BLACK_HOLE_GRAVITY = 1000.0;
 
 const BH_VERT = '\
 uniform mat4 u_mvp_matrix;\n\
@@ -14,7 +14,7 @@ attribute vec3 a_pos;\n\
 \n\
 void main() {\n\
         gl_Position = u_mvp_matrix * vec4(a_pos, 1.0);\n\
-        gl_PointSize = 20000.0 / gl_Position.w;\n\
+        gl_PointSize = 10000.0 / gl_Position.z;\n\
 }\n\
 ';
 
@@ -75,8 +75,8 @@ function randFloat(min, max) {
 
 class BlackHole {
         constructor() {
-                this.pos = vec3.random(vec3.create(), INITIAL_BOUNDS);
-                this.vel = vec3.random(vec3.create(), INITIAL_SPEED_LIMIT);
+                this.pos = vec3.random(vec3.create(), randFloat(0, INITIAL_BOUNDS));
+                this.vel = vec3.random(vec3.create(), randFloat(0, INITIAL_SPEED_LIMIT));
         }
 }
 
@@ -195,12 +195,11 @@ class Universe {
         drawBlackHoles() {
                 const gl = this.gl;
                 
-                var blackHolePositions = new Float32Array(3);
+                var blackHolePositions = new Float32Array(this.blackHoles.length * 3);
                 var arrayOffset = 0;
                 for (var bh of this.blackHoles) {
                         blackHolePositions[arrayOffset++] = bh.pos[0];
                         blackHolePositions[arrayOffset++] = bh.pos[1];
-                        blackHolePositions[arrayOffset++] = bh.pos[2];
                         blackHolePositions[arrayOffset++] = bh.pos[2];
                 }
                 const blackHolePosBuffer = createBuffer(gl, blackHolePositions);
@@ -209,7 +208,7 @@ class Universe {
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
                                     false, this.mvpMatrix);
                 bindAttribute(gl, blackHolePosBuffer, this.blackHoleShaderProgram.a_pos, 3);
-                gl.drawArrays(gl.POINTS, 0, 1);
+                gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
                 
                 gl.deleteBuffer(blackHolePosBuffer);
         }
@@ -226,13 +225,15 @@ class Universe {
         updateBlackHoles() {
                 var acc;
                 for (var i = 0; i < this.blackHoles.length; i++) {
-                        for (var j = i + 1; j < this.blackHoles.length; i++) {
+                        for (var j = i + 1; j < this.blackHoles.length; j++) {
                                 acc = vec3.create();
-                                vec3.sub(acc, this.blackHoles[i].pos, this.blackHoles[j].pos);
-                                vec3.scale(acc, BLACK_HOLE_GRAVITY /
-                                        (length(acc) * squaredLength(acc)));
+                                vec3.subtract(acc, this.blackHoles[i].pos, this.blackHoles[j].pos);
+                                console.log('scale factor', BLACK_HOLE_GRAVITY /
+                                            (vec3.length(acc) * vec3.squaredLength(acc)));
+                                vec3.scale(acc, acc, BLACK_HOLE_GRAVITY /
+                                        (vec3.length(acc) * vec3.squaredLength(acc)));
                                 vec3.add(this.blackHoles[j].vel, this.blackHoles[j].vel, acc);
-                                vec3.sub(this.blackHoles[i].vel, this.blackHoles[i].vel, acc);
+                                vec3.subtract(this.blackHoles[i].vel, this.blackHoles[i].vel, acc);
                         }
                 }
                 
