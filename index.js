@@ -1,6 +1,6 @@
 var canvas = document.getElementById('canvas');
-const pixelRatio = window.devicePixelRatio || 1;
-console.log('window.devicePixelRatio', window.devicePixelRatio);
+//const pixelRatio = window.devicePixelRatio || 1;
+//console.log('window.devicePixelRatio', window.devicePixelRatio);
 canvas.style.width = window.innerWidth;
 canvas.style.height = window.innerHeight;
 canvas.width = window.innerWidth;// * pixelRatio;

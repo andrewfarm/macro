@@ -13,8 +13,8 @@ uniform mat4 u_mvp_matrix;\n\
 attribute vec3 a_pos;\n\
 \n\
 void main() {\n\
-        gl_PointSize = 20.0;\n\
-        gl_Position = vec4(a_pos, 1.0);\n\
+        gl_Position = u_mvp_matrix * vec4(a_pos, 1.0);\n\
+        gl_PointSize = 20000.0 / gl_Position.w;\n\
 }\n\
 ';
 
@@ -95,7 +95,7 @@ class Universe {
                 
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
-                        vec3.fromValues(0.0, 0.0, INITIAL_BOUNDS),
+                        vec3.fromValues(0.0, 0.0, INITIAL_BOUNDS * 2.0),
                         vec3.fromValues(0.0, 0.0, 0.0),
                         vec3.fromValues(0.0, 1.0, 0.0));
                 this.projectionMatrix = mat4.perspective(mat4.create(),
@@ -168,6 +168,9 @@ class Universe {
                         starIndices[i] = i;
                 }
                 this.starIndexBuffer = createBuffer(gl, starIndices);
+                
+                console.log('created ' + galaxyCount + ' galaxies and ' +
+                        this.starCount + ' stars');
         }
         
         nextFrame() {
@@ -182,38 +185,31 @@ class Universe {
                 gl.disable(gl.STENCIL_TEST);
                 
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-                gl.clearColor(1.0, 0.5, 0.0, 1.0);
+                gl.clearColor(0.0, 0.0, 0.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 
-//                this.drawBlackHoles();
-//                this.drawStars();
-                
-//                const gl = this.gl;
-//                const program = this.testScreenShaderProgram;
-//                gl.useProgram(program.program);
-//                
-//                bindAttribute(gl, this.quadBuffer, program.a_pos, 2);
-//                
-//                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                this.drawBlackHoles();
+                this.drawStars();
         }
         
         drawBlackHoles() {
                 const gl = this.gl;
                 
-                var blackHolePositions = new Float32Array(this.blackHoles.length * 3);
+                var blackHolePositions = new Float32Array(3);
                 var arrayOffset = 0;
                 for (var bh of this.blackHoles) {
                         blackHolePositions[arrayOffset++] = bh.pos[0];
                         blackHolePositions[arrayOffset++] = bh.pos[1];
                         blackHolePositions[arrayOffset++] = bh.pos[2];
+                        blackHolePositions[arrayOffset++] = bh.pos[2];
                 }
-                var blackHolePosBuffer = createBuffer(gl, blackHolePositions);
+                const blackHolePosBuffer = createBuffer(gl, blackHolePositions);
                 
                 gl.useProgram(this.blackHoleShaderProgram.program);
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
                                     false, this.mvpMatrix);
                 bindAttribute(gl, blackHolePosBuffer, this.blackHoleShaderProgram.a_pos, 3);
-                gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
+                gl.drawArrays(gl.POINTS, 0, 1);
                 
                 gl.deleteBuffer(blackHolePosBuffer);
         }
