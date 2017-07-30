@@ -35,9 +35,22 @@ uniform float u_star_res;\n\
 \n\
 attribute float a_index;\n\
 \n\
+\n\
+float colorToFloat32(vec4 color) {\n\
+        int integer  = int(floor(color.r * 255.0)) * 255 + int(floor(color.g * 255.0));\n\
+        int fraction = int(floor(color.b * 255.0)) * 255 + int(floor(color.a * 255.0));\n\
+        return float(integer) + (float(fraction) / 65535.0);\n\
+}\n\
+\n\
 void main() {\n\
-        gl_Position = u_mvp_matrix * vec4(texture2D(u_star_pos,\n\
-                vec2(a_index / u_star_res)).rgb * 255.0, 1.0);\n\
+        vec4 xColor = texture2D(u_star_pos, vec2((a_index) / u_star_res, 0.0));\n\
+        vec4 yColor = texture2D(u_star_pos, vec2((a_index + 1.0) / u_star_res, 0.0));\n\
+        vec4 zColor = texture2D(u_star_pos, vec2((a_index + 2.0) / u_star_res, 0.0));\n\
+        gl_Position = u_mvp_matrix * vec4(\n\
+                colorToFloat32(xColor),\n\
+                colorToFloat32(yColor),\n\
+                colorToFloat32(zColor),\n\
+                1.0);\n\
         gl_PointSize = 2000.0 / gl_Position.z;\n\
 }\n\
 ';
@@ -80,6 +93,17 @@ function randInt(min, max) {
 
 function randFloat(min, max) {
         return Math.random() * (max - min) + min;
+}
+
+function storeFloatAsFixed32(buf, offset /* in floats */, f) {
+        const bufView = new Uint16Array(buf);
+        var integer = Math.floor(f);
+        if (integer > 0xFFFF) {
+                throw 'value too big';
+        }
+        var fraction = f - integer;
+        bufView[offset * 2] = integer;
+        bufView[offset * 2 + 1] = Math.floor(fraction * 0xFFFF);
 }
 
 class BlackHole {
@@ -130,8 +154,14 @@ class Universe {
                 }
                 
                 //generate galaxies
-                var starPositions =  new Uint8Array(this.starCount * 4);
-                var starVelocities = new Uint8Array(this.starCount * 4);
+                
+                //allocate star position and velocity buffers
+                const TEXELS_PER_STAR = 4;
+                this.STAR_TEXEL_COUNT = this.starCount * TEXELS_PER_STAR;
+                this.STAR_BYTE_COUNT = this.STAR_TEXEL_COUNT * 4;
+                var starPosBuf =  new ArrayBuffer(this.STAR_BYTE_COUNT);
+                var starVelBuf = new ArrayBuffer(this.STAR_BYTE_COUNT);
+                
                 var arrayOffset = 0;
                 var galaxyRadius;
                 var starDist, starAngle;
@@ -142,7 +172,7 @@ class Universe {
                         this.blackHoles[i] = new BlackHole();
                         
                         //generate stars
-                        galaxyRadius = galaxySizes[i] * 0.05; //TODO
+                        galaxyRadius = galaxySizes[i] * 0.1; //TODO
                         for (var j = 0; j < galaxySizes[i]; j++) {
                                 starDist = randFloat(0, galaxyRadius);
                                 starAngle = randFloat(0, 2.0 * Math.PI);
@@ -154,28 +184,41 @@ class Universe {
                                 starVelY = starSpeed *  Math.cos(starAngle);
                                 starVelZ = 0.0;
                                 
-                                starPositions[arrayOffset]     = Math.floor(starPosX);
-                                starPositions[arrayOffset + 1] = Math.floor(starPosY);
-                                starPositions[arrayOffset + 2] = Math.floor(starPosZ);
-                                starPositions[arrayOffset + 3] = 1;
-                                starVelocities[arrayOffset]     = Math.floor(starVelX);
-                                starVelocities[arrayOffset + 1] = Math.floor(starVelY);
-                                starVelocities[arrayOffset + 2] = Math.floor(starVelZ);
-                                starVelocities[arrayOffset + 3] = 1;
+                                storeFloatAsFixed32(starPosBuf, arrayOffset,
+                                        this.blackHoles[i].pos[0] + starPosX);
+                                storeFloatAsFixed32(starPosBuf, arrayOffset + 1,
+                                        this.blackHoles[i].pos[1] + starPosY);
+                                storeFloatAsFixed32(starPosBuf, arrayOffset + 2,
+                                        this.blackHoles[i].pos[2] + starPosZ);
+                                storeFloatAsFixed32(starPosBuf, arrayOffset + 3, 1.0);
+                                
+                                storeFloatAsFixed32(starVelBuf, arrayOffset,
+                                        this.blackHoles[i].vel[0] + starVelX);
+                                storeFloatAsFixed32(starVelBuf, arrayOffset + 1,
+                                        this.blackHoles[i].vel[1] + starVelY);
+                                storeFloatAsFixed32(starVelBuf, arrayOffset + 2,
+                                        this.blackHoles[i].vel[2] + starVelZ);
+                                storeFloatAsFixed32(starVelBuf, arrayOffset + 3, 1.0);
+                                
                                 arrayOffset += 4;
                         }
                 }
                 
+                //create views of buffers as Uint8 arrays
+                const starPosUint8 = new Uint8Array(starPosBuf);
+                const starVelUint8 = new Uint8Array(starVelBuf);
+                
                 //store star states in textures
-                var gl = this.gl;
-                this.starPosTexture = createTexture(gl, gl.NEAREST, starPositions,  this.starCount, 1);
-                this.starVelTexture = createTexture(gl, gl.NEAREST, starVelocities, this.starCount, 1);
-                console.log('starPositions', starPositions);
+                const gl = this.gl;
+                this.starPosTexture = createTexture(gl, gl.NEAREST,
+                        starPosUint8, this.STAR_TEXEL_COUNT, 1);
+                this.starVelTexture = createTexture(gl, gl.NEAREST,
+                        starVelUint8, this.STAR_TEXEL_COUNT, 1);
                 
                 //store star indices in buffer
                 var starIndices = new Float32Array(this.starCount);
                 for (var i = 0; i < this.starCount; i++) {
-                        starIndices[i] = i;
+                        starIndices[i] = i * TEXELS_PER_STAR;
                 }
                 this.starIndexBuffer = createBuffer(gl, starIndices);
                 
@@ -232,7 +275,7 @@ class Universe {
                 gl.uniformMatrix4fv(this.starShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
-                gl.uniform1f(this.starShaderProgram.u_star_res, this.starCount);
+                gl.uniform1f(this.starShaderProgram.u_star_res, this.STAR_TEXEL_COUNT);
                 gl.drawArrays(gl.POINTS, 0, this.starCount);
         }
         
