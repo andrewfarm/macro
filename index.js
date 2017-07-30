@@ -5,10 +5,15 @@ canvas.style.width = window.innerWidth;
 canvas.style.height = window.innerHeight;
 canvas.width = window.innerWidth;// * pixelRatio;
 canvas.height = window.innerHeight;// * pixelRatio;
+var rect = canvas.getBoundingClientRect();
 
 const gl = canvas.getContext('webgl') ||
         canvas.getContext('experimental-webgl');
 const universe = new Universe(gl);
+canvas.addEventListener('mousemove',
+        function(event) {
+                universe.mouseMoved(event.clientX - rect.left, event.clientY - rect.top);
+        });
 
 function render() {
         universe.nextFrame();

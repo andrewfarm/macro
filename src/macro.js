@@ -7,6 +7,8 @@ const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 2.0;
 const BLACK_HOLE_GRAVITY = 1000.0;
 
+const MOUSE_SENSITIVITY = 500.0;
+
 const BH_VERT = '\
 uniform mat4 u_mvp_matrix;\n\
 \n\
@@ -94,28 +96,28 @@ function randFloat(min, max) {
         return Math.random() * (max - min) + min;
 }
 
-function storeFloatAsFixed32(buf, offset /* in floats */, f) {
+function storeFloatAsFixed32(buf, floatOffset, f) {
         const bufView = new Uint16Array(buf);
         var integer = Math.floor(f);
         if ((integer < -0x8000) || (integer > 0x7FFF)) {
                 throw 'value too big: ' + integer + ': must be in the range  [-32768, 32768)';
         }
         var fraction = f - integer;
-        bufView[offset * 2] = integer + 0x8000;
-        bufView[offset * 2 + 1] = Math.floor(fraction * 0xFFFF);
-        console.log('stored value ' + f + ': integer: ' + (integer + 0x8000) + ', fraction: ' + Math.floor(fraction * 0xFFFF) + '/65536');
+        bufView[floatOffset * 2] = integer + 0x8000;
+        bufView[floatOffset * 2 + 1] = Math.floor(fraction * 0xFFFF);
+//        console.log('stored value ' + f + ': integer: ' + (integer + 0x8000) + ', fraction: ' + Math.floor(fraction * 0xFFFF) + '/65536');
 }
 
 class BlackHole {
         constructor() {
                 this.pos = vec3.fromValues(
-                        randFloat(0, INITIAL_BOUNDS),
-                        randFloat(0, INITIAL_BOUNDS),
-                        randFloat(0, INITIAL_BOUNDS));
+                        randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS),
+                        randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS),
+                        randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS));
                 this.vel = vec3.fromValues(
-                        randFloat(0, INITIAL_SPEED_LIMIT),
-                        randFloat(0, INITIAL_SPEED_LIMIT),
-                        randFloat(0, INITIAL_SPEED_LIMIT));
+                        randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT),
+                        randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT),
+                        randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT));
         }
 }
 
@@ -138,12 +140,10 @@ class Universe {
                         vec3.fromValues(0.0, 0.0, 0.0),
                         vec3.fromValues(0.0, 1.0, 0.0));
                 this.projectionMatrix = mat4.perspective(mat4.create(),
-                        Math.PI / 3.0, window.innerWidth / window.innerHeight, 1.0, 10000.0);
+                        Math.PI / 3.0, gl.canvas.width / gl.canvas.height, 1.0, 10000.0);
                 
-                this.mvpMatrix = mat4.multiply(
-                        mat4.create(), this.viewMatrix, this.modelMatrix);
-                this.mvpMatrix = mat4.multiply(
-                        this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
+                this.mvpMatrix = mat4.create();
+                this.updateMvpMatrix();
                 
                 this.starCount = 0;
                 this.blackHoles = [];
@@ -222,7 +222,6 @@ class Universe {
                 //create views of buffers as Uint8 arrays
                 const starPosUint8 = new Uint8Array(starPosBuf);
                 const starVelUint8 = new Uint8Array(starVelBuf);
-                console.log('starPosUint8', starPosUint8);
                 
                 //store star states in textures
                 const gl = this.gl;
@@ -240,6 +239,21 @@ class Universe {
                 
                 console.log('created ' + galaxyCount + ' galaxies and ' +
                         this.starCount + ' stars');
+        }
+        
+        mouseMoved(x, y) {
+                var camX = (x / this.gl.canvas.width  *  2.0 - 1.0) * MOUSE_SENSITIVITY;
+                var camY = (y / this.gl.canvas.height * -2.0 + 1.0) * MOUSE_SENSITIVITY;
+                this.viewMatrix = mat4.lookAt(mat4.create(),
+                        vec3.fromValues(camX, camY, INITIAL_BOUNDS * 2.0),
+                        vec3.fromValues(0.0, 0.0, 0.0),
+                        vec3.fromValues(0.0, 1.0, 0.0));
+                this.updateMvpMatrix();
+        }
+        
+        updateMvpMatrix() {
+                mat4.multiply(this.mvpMatrix, this.viewMatrix, this.modelMatrix);
+                mat4.multiply(this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
         }
         
         nextFrame() {
