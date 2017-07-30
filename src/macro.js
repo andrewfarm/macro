@@ -27,9 +27,18 @@ void main() {\n\
 ';
 
 const STAR_VERT = '\
+precision mediump float;\n\
+\n\
+uniform mat4 u_mvp_matrix;\n\
+uniform sampler2D u_star_pos;\n\
+uniform float u_star_res;\n\
+\n\
+attribute float a_index;\n\
+\n\
 void main() {\n\
-        gl_PointSize = 20.0;\n\
-        gl_Position = vec4(0.0);\n\
+        gl_Position = u_mvp_matrix * vec4(texture2D(u_star_pos,\n\
+                vec2(a_index / u_star_res)).rgb * 255.0, 1.0);\n\
+        gl_PointSize = 2000.0 / gl_Position.z;\n\
 }\n\
 ';
 
@@ -37,7 +46,7 @@ const STAR_FRAG = '\
 precision mediump float;\n\
 \n\
 void main() {\n\
-        gl_FragColor = vec4(v_tex_pos, 1.0, 1.0);\n\
+        gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);\n\
 }\n\
 ';
 
@@ -89,7 +98,7 @@ class Universe {
                 this.framebuffer = gl.createFramebuffer();
                 
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
-//                this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
+                this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
 //                this.starUpdateShaderProgram = createProgram(
 //                        gl, QUAD_VERT, STAR_UPDATE_FRAG);
                 
@@ -145,14 +154,14 @@ class Universe {
                                 starVelY = starSpeed *  Math.cos(starAngle);
                                 starVelZ = 0.0;
                                 
-                                starPositions[arrayOffset]     = Math.floor(starPosX * 0xFF);
-                                starPositions[arrayOffset + 1] = Math.floor(starPosY * 0xFF);
-                                starPositions[arrayOffset + 2] = Math.floor(starPosZ * 0xFF);
-                                starPositions[arrayOffset + 3] = 0xFF;
-                                starVelocities[arrayOffset]     = Math.floor(starVelX * 0xFF);
-                                starVelocities[arrayOffset + 1] = Math.floor(starVelY * 0xFF);
-                                starVelocities[arrayOffset + 2] = Math.floor(starVelZ * 0xFF);
-                                starVelocities[arrayOffset + 3] = 0xFF;
+                                starPositions[arrayOffset]     = Math.floor(starPosX);
+                                starPositions[arrayOffset + 1] = Math.floor(starPosY);
+                                starPositions[arrayOffset + 2] = Math.floor(starPosZ);
+                                starPositions[arrayOffset + 3] = 1;
+                                starVelocities[arrayOffset]     = Math.floor(starVelX);
+                                starVelocities[arrayOffset + 1] = Math.floor(starVelY);
+                                starVelocities[arrayOffset + 2] = Math.floor(starVelZ);
+                                starVelocities[arrayOffset + 3] = 1;
                                 arrayOffset += 4;
                         }
                 }
@@ -161,6 +170,7 @@ class Universe {
                 var gl = this.gl;
                 this.starPosTexture = createTexture(gl, gl.NEAREST, starPositions,  this.starCount, 1);
                 this.starVelTexture = createTexture(gl, gl.NEAREST, starVelocities, this.starCount, 1);
+                console.log('starPositions', starPositions);
                 
                 //store star indices in buffer
                 var starIndices = new Float32Array(this.starCount);
@@ -184,6 +194,7 @@ class Universe {
                 gl.depthFunc(gl.LESS);
                 gl.disable(gl.STENCIL_TEST);
                 
+                bindFramebuffer(gl, null);
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
                 gl.clearColor(0.0, 0.0, 0.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -206,7 +217,7 @@ class Universe {
                 
                 gl.useProgram(this.blackHoleShaderProgram.program);
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
-                                    false, this.mvpMatrix);
+                        false, this.mvpMatrix);
                 bindAttribute(gl, blackHolePosBuffer, this.blackHoleShaderProgram.a_pos, 3);
                 gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
                 
@@ -214,7 +225,15 @@ class Universe {
         }
         
         drawStars() {
-                //TODO method stub
+                const gl = this.gl;
+                gl.useProgram(this.starShaderProgram.program);
+                bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
+                bindTexture(gl, this.starPosTexture, 0);
+                gl.uniformMatrix4fv(this.starShaderProgram.u_mvp_matrix,
+                        false, this.mvpMatrix);
+                gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
+                gl.uniform1f(this.starShaderProgram.u_star_res, this.starCount);
+                gl.drawArrays(gl.POINTS, 0, this.starCount);
         }
         
         update() {
@@ -228,8 +247,6 @@ class Universe {
                         for (var j = i + 1; j < this.blackHoles.length; j++) {
                                 acc = vec3.create();
                                 vec3.subtract(acc, this.blackHoles[i].pos, this.blackHoles[j].pos);
-                                console.log('scale factor', BLACK_HOLE_GRAVITY /
-                                            (vec3.length(acc) * vec3.squaredLength(acc)));
                                 vec3.scale(acc, acc, BLACK_HOLE_GRAVITY /
                                         (vec3.length(acc) * vec3.squaredLength(acc)));
                                 vec3.add(this.blackHoles[j].vel, this.blackHoles[j].vel, acc);
