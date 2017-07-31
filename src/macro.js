@@ -5,6 +5,8 @@ const MAX_STARS_IN_GALAXY = 1000;
 
 const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 2.0;
+
+const UNIVERSE_BOUNDARY = 100000;
 const BLACK_HOLE_GRAVITY = 1000.0;
 
 const MOUSE_SENSITIVITY = 800.0;
@@ -34,6 +36,7 @@ precision mediump float;\n\
 uniform mat4 u_mvp_matrix;\n\
 uniform sampler2D u_star_pos;\n\
 uniform float u_star_res;\n\
+uniform float u_universe_boundary;\n\
 \n\
 attribute float a_index;\n\
 \n\
@@ -44,9 +47,12 @@ vec4 getTexelColor(float index) {\n\
 }\n\
 \n\
 float colorToFloat32(vec4 color) {\n\
-        int integer  = int(floor(color.g * 255.0)) * 256 + int(floor(color.r * 255.0)) - 32768;\n\
-        int fraction = int(floor(color.a * 255.0)) * 256 + int(floor(color.b * 255.0));\n\
-        return float(integer) + (float(fraction) / 65535.0);\n\
+        float universeCoord =\n\
+                floor(color.r * 255.0) +\n\
+                floor(color.g * 255.0) * float(0x100) +\n\
+                floor(color.b * 255.0) * float(0x10000) +\n\
+                floor(color.a * 255.0) * float(0x1000000);\n\
+        return (universeCoord - float(0x7FFFFFFF)) / float(0x7FFFFFFF) * u_universe_boundary;\n\
 }\n\
 \n\
 void main() {\n\
@@ -103,16 +109,12 @@ function randFloat(min, max) {
         return Math.random() * (max - min) + min;
 }
 
-function storeFloatAsFixed32(buf, floatOffset, f) {
-        const bufView = new Uint16Array(buf);
-        var integer = Math.floor(f);
-        if ((integer < -0x8000) || (integer > 0x7FFF)) {
-                throw 'value too big: ' + integer + ': must be in the range  [-32768, 32768)';
+function floatToUniverseCoord32(f) {
+        if (Math.abs(f) > UNIVERSE_BOUNDARY) {
+                throw 'value too big: ' + f + ' (must be no larger than ' +
+                        UNIVERSE_BOUNDARY + ')';
         }
-        var fraction = f - integer;
-        bufView[floatOffset * 2] = integer + 0x8000;
-        bufView[floatOffset * 2 + 1] = Math.floor(fraction * 0xFFFF);
-//        console.log('stored value ' + f + ': integer: ' + (integer + 0x8000) + ', fraction: ' + Math.floor(fraction * 0xFFFF) + '/65536');
+        return Math.floor(f / UNIVERSE_BOUNDARY * 0x7FFFFFFF) + 0x7FFFFFFF;
 }
 
 class BlackHole {
@@ -186,7 +188,7 @@ class Universe {
                         this.starCount + ' stars (' + this.starTexelCount +
                         ' texels)');
                 var starStateBuf =  new ArrayBuffer(this.starTexelCount * 4);
-                console.log('starStateBuf', starStateBuf);
+                var starStatesUint32 = new Uint32Array(starStateBuf);
                 
                 var arrayOffset = 0;
                 var galaxyRadius;
@@ -210,18 +212,18 @@ class Universe {
                                 starVelY = starSpeed *  Math.cos(starAngle);
                                 starVelZ = 0.0;
                                 
-                                storeFloatAsFixed32(starStateBuf, arrayOffset,
+                                starStatesUint32[arrayOffset] = floatToUniverseCoord32(
                                         this.blackHoles[i].pos[0] + starPosX);
-                                storeFloatAsFixed32(starStateBuf, arrayOffset + 1,
+                                starStatesUint32[arrayOffset + 1] = floatToUniverseCoord32(
                                         this.blackHoles[i].pos[1] + starPosY);
-                                storeFloatAsFixed32(starStateBuf, arrayOffset + 2,
+                                starStatesUint32[arrayOffset + 2] = floatToUniverseCoord32(
                                         this.blackHoles[i].pos[2] + starPosZ);
                                 
-//                                storeFloatAsFixed32(starStateBuf, arrayOffset + 3,
+//                                starStatesUint32[arrayOffset + 3] = floatToUniverseCoord32(
 //                                        this.blackHoles[i].vel[0] + starVelX);
-//                                storeFloatAsFixed32(starStateBuf, arrayOffset + 4,
+//                                starStatesUint32[arrayOffset + 4] = floatToUniverseCoord32(
 //                                        this.blackHoles[i].vel[1] + starVelY);
-//                                storeFloatAsFixed32(starStateBuf, arrayOffset + 5,
+//                                starStatesUint32[arrayOffset + 5] = floatToUniverseCoord32(
 //                                        this.blackHoles[i].vel[2] + starVelZ);
                                 
                                 arrayOffset += TEXELS_PER_STAR;
@@ -312,6 +314,7 @@ class Universe {
                         false, this.mvpMatrix);
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
                 gl.uniform1f(this.starShaderProgram.u_star_res, this.starStateTextureRes);
+                gl.uniform1f(this.starShaderProgram.u_universe_boundary, UNIVERSE_BOUNDARY);
                 gl.drawArrays(gl.POINTS, 0, this.starCount);
         }
         
