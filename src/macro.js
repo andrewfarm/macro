@@ -12,9 +12,11 @@ const BLACK_HOLE_GRAVITY = 2000.0;
 const MOUSE_SENSITIVITY = 800.0;
 
 const BH_VERT = '\
+#version 300 es\n\
+\n\
 uniform mat4 u_mvp_matrix;\n\
 \n\
-attribute vec3 a_pos;\n\
+in vec3 a_pos;\n\
 \n\
 void main() {\n\
         gl_Position = u_mvp_matrix * vec4(a_pos, 1.0);\n\
@@ -23,14 +25,20 @@ void main() {\n\
 ';
 
 const BH_FRAG = '\
+#version 300 es\n\
+\n\
 precision mediump float;\n\
 \n\
+out vec4 fragColor;\n\
+\n\
 void main() {\n\
-        gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n\
+        fragColor = vec4(1.0, 0.0, 1.0, 1.0);\n\
 }\n\
 ';
 
 const STAR_VERT = '\
+#version 300 es\n\
+\n\
 precision mediump float;\n\
 \n\
 uniform mat4 u_mvp_matrix;\n\
@@ -38,10 +46,10 @@ uniform sampler2D u_star_pos;\n\
 uniform float u_star_res;\n\
 uniform float u_universe_boundary;\n\
 \n\
-attribute float a_index;\n\
+in float a_index;\n\
 \n\
 vec4 getTexelColor(float index) {\n\
-        return texture2D(u_star_pos, vec2(\n\
+        return texture(u_star_pos, vec2(\n\
                 fract(index / u_star_res),\n\
                 floor(index / u_star_res) / u_star_res));\n\
 }\n\
@@ -69,19 +77,25 @@ void main() {\n\
 ';
 
 const STAR_FRAG = '\
+#version 300 es\n\
+\n\
 precision mediump float;\n\
 \n\
+out vec4 fragColor;\n\
+\n\
 void main() {\n\
-        gl_FragColor = vec4(0.0, 1.0, 1.0, 1.0);\n\
+        fragColor = vec4(0.0, 1.0, 1.0, 1.0);\n\
 }\n\
 ';
 
 const QUAD_VERT = '\
+#version 300 es\n\
+\n\
 precision mediump float;\n\
 \n\
-attribute vec2 a_pos;\n\
+in vec2 a_pos;\n\
 \n\
-varying vec2 v_tex_pos;\n\
+out vec2 v_tex_pos;\n\
 \n\
 void main() {\n\
         v_tex_pos = a_pos;\n\
@@ -90,12 +104,14 @@ void main() {\n\
 ';
 
 const STAR_UPDATE_FRAG = '\
+#version 300 es\n\
+\n\
 precision mediump float;\n\
 \n\
 uniform sampler2D u_star_pos;\n\
 uniform sampler2D u_star_vel;\n\
 \n\
-varying vec2 v_tex_pos;\n\
+in vec2 v_tex_pos;\n\
 \n\
 void main() {\n\
 }\n\
@@ -140,7 +156,7 @@ class Universe {
                 
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
                 this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
-                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT, STAR_UPDATE_FRAG);
+//                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT, STAR_UPDATE_FRAG);
                 
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
