@@ -1,0 +1,64 @@
+body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000000;
+        font-family: Avenir Next, monospace;
+        text-transform: uppercase;
+        color: #ffffff;
+        text-shadow:
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff;
+}
+
+div {
+        width: 60%;
+        margin: auto;
+        margin-top: 10em;
+}
+
+h1 {
+        font-weight: normal;
+        font-size: 48pt;
+}
+
+h2 {
+        font-weight: normal;
+        font-size: 24pt;
+}
+
+ul {
+        list-style-type: none;
+        padding: 0px;
+}
+
+a {
+        text-decoration: none;
+}
+
+a:hover {
+        text-shadow:
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff;
+}
+
+a:visited {
+        color: inherit;
+}
+
+.red {
+        text-shadow:
+        0pt 0pt 8pt #ff8080,
+        0pt 0pt 8pt #ff8080;
+}
+
+.green {
+        text-shadow:
+        0pt 0pt 8pt #66ff66,
+        0pt 0pt 8pt #66ff66;
+}
