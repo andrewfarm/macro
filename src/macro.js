@@ -156,15 +156,6 @@ class Universe {
                 this.starCount = 0;
                 this.blackHoles = [];
                 this.genesis();
-                
-//                //test
-//                var arraybuf = new ArrayBuffer(4);
-//                var originalValue = 32767.5;
-//                storeFloatAsFixed32(arraybuf, 0, originalValue);
-//                console.log('original value', originalValue);
-//                var view = new Uint16Array(arraybuf);
-//                console.log('integer', view[0]);
-//                console.log('fraction', view[1]);
         }
         
         genesis() {
@@ -225,12 +216,12 @@ class Universe {
                                 starStatesUint32[arrayOffset + 2] = floatToUniverseCoord32(
                                         this.blackHoles[i].pos[2] + starPosZ);
                                 
-//                                starStatesUint32[arrayOffset + 3] = floatToUniverseCoord32(
-//                                        this.blackHoles[i].vel[0] + starVelX);
-//                                starStatesUint32[arrayOffset + 4] = floatToUniverseCoord32(
-//                                        this.blackHoles[i].vel[1] + starVelY);
-//                                starStatesUint32[arrayOffset + 5] = floatToUniverseCoord32(
-//                                        this.blackHoles[i].vel[2] + starVelZ);
+                                starStatesUint32[arrayOffset + 3] = floatToUniverseCoord32(
+                                        this.blackHoles[i].vel[0] + starVelX);
+                                starStatesUint32[arrayOffset + 4] = floatToUniverseCoord32(
+                                        this.blackHoles[i].vel[1] + starVelY);
+                                starStatesUint32[arrayOffset + 5] = floatToUniverseCoord32(
+                                        this.blackHoles[i].vel[2] + starVelZ);
                                 
                                 arrayOffset += TEXELS_PER_STAR;
                         }
