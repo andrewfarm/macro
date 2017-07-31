@@ -7,7 +7,7 @@ const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 2.0;
 const BLACK_HOLE_GRAVITY = 1000.0;
 
-const MOUSE_SENSITIVITY = 500.0;
+const MOUSE_SENSITIVITY = 800.0;
 
 const BH_VERT = '\
 uniform mat4 u_mvp_matrix;\n\
@@ -37,6 +37,12 @@ uniform float u_star_res;\n\
 \n\
 attribute float a_index;\n\
 \n\
+vec4 getTexelColor(float index) {\n\
+        return texture2D(u_star_pos, vec2(\n\
+                fract(index / u_star_res),\n\
+                floor(index / u_star_res) / u_star_res));\n\
+}\n\
+\n\
 float colorToFloat32(vec4 color) {\n\
         int integer  = int(floor(color.g * 255.0)) * 256 + int(floor(color.r * 255.0)) - 32768;\n\
         int fraction = int(floor(color.a * 255.0)) * 256 + int(floor(color.b * 255.0));\n\
@@ -44,9 +50,9 @@ float colorToFloat32(vec4 color) {\n\
 }\n\
 \n\
 void main() {\n\
-        vec4 xColor = texture2D(u_star_pos, vec2((a_index) / u_star_res, 0.0));\n\
-        vec4 yColor = texture2D(u_star_pos, vec2((a_index + 1.0) / u_star_res, 0.0));\n\
-        vec4 zColor = texture2D(u_star_pos, vec2((a_index + 2.0) / u_star_res, 0.0));\n\
+        vec4 xColor = getTexelColor(a_index);\n\
+        vec4 yColor = getTexelColor(a_index + 1.0);\n\
+        vec4 zColor = getTexelColor(a_index + 2.0);\n\
         gl_Position = u_mvp_matrix * vec4(1.0 * vec3(\n\
                 colorToFloat32(xColor),\n\
                 colorToFloat32(yColor),\n\
@@ -78,6 +84,7 @@ void main() {\n\
 ';
 
 const STAR_UPDATE_FRAG = '\
+precision mediump float;\n\
 \n\
 uniform sampler2D u_star_pos;\n\
 uniform sampler2D u_star_vel;\n\
@@ -131,8 +138,7 @@ class Universe {
                 
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
                 this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
-//                this.starUpdateShaderProgram = createProgram(
-//                        gl, QUAD_VERT, STAR_UPDATE_FRAG);
+                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT, STAR_UPDATE_FRAG);
                 
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
@@ -172,10 +178,15 @@ class Universe {
                 
                 //allocate star position and velocity buffers
                 const TEXELS_PER_STAR = 4;
-                this.STAR_TEXEL_COUNT = this.starCount * TEXELS_PER_STAR;
-                this.STAR_BYTE_COUNT = this.STAR_TEXEL_COUNT * 4;
-                var starPosBuf =  new ArrayBuffer(this.STAR_BYTE_COUNT);
-                var starVelBuf = new ArrayBuffer(this.STAR_BYTE_COUNT);
+                this.starStateTextureRes = Math.ceil(Math.sqrt(this.starCount * TEXELS_PER_STAR));
+                this.starTexelCount =
+                        this.starStateTextureRes * this.starStateTextureRes;
+                console.log('using ' + this.starStateTextureRes + 'x' +
+                        this.starStateTextureRes + ' texture for ' +
+                        this.starCount + ' stars (' + this.starTexelCount +
+                        ' texels)');
+                var starStateBuf =  new ArrayBuffer(this.starTexelCount * 4);
+                console.log('starStateBuf', starStateBuf);
                 
                 var arrayOffset = 0;
                 var galaxyRadius;
@@ -199,36 +210,31 @@ class Universe {
                                 starVelY = starSpeed *  Math.cos(starAngle);
                                 starVelZ = 0.0;
                                 
-                                storeFloatAsFixed32(starPosBuf, arrayOffset,
+                                storeFloatAsFixed32(starStateBuf, arrayOffset,
                                         this.blackHoles[i].pos[0] + starPosX);
-                                storeFloatAsFixed32(starPosBuf, arrayOffset + 1,
+                                storeFloatAsFixed32(starStateBuf, arrayOffset + 1,
                                         this.blackHoles[i].pos[1] + starPosY);
-                                storeFloatAsFixed32(starPosBuf, arrayOffset + 2,
+                                storeFloatAsFixed32(starStateBuf, arrayOffset + 2,
                                         this.blackHoles[i].pos[2] + starPosZ);
-                                storeFloatAsFixed32(starPosBuf, arrayOffset + 3, 1.0);
                                 
-                                storeFloatAsFixed32(starVelBuf, arrayOffset,
-                                        this.blackHoles[i].vel[0] + starVelX);
-                                storeFloatAsFixed32(starVelBuf, arrayOffset + 1,
-                                        this.blackHoles[i].vel[1] + starVelY);
-                                storeFloatAsFixed32(starVelBuf, arrayOffset + 2,
-                                        this.blackHoles[i].vel[2] + starVelZ);
-                                storeFloatAsFixed32(starVelBuf, arrayOffset + 3, 1.0);
+//                                storeFloatAsFixed32(starStateBuf, arrayOffset + 3,
+//                                        this.blackHoles[i].vel[0] + starVelX);
+//                                storeFloatAsFixed32(starStateBuf, arrayOffset + 4,
+//                                        this.blackHoles[i].vel[1] + starVelY);
+//                                storeFloatAsFixed32(starStateBuf, arrayOffset + 5,
+//                                        this.blackHoles[i].vel[2] + starVelZ);
                                 
-                                arrayOffset += 4;
+                                arrayOffset += TEXELS_PER_STAR;
                         }
                 }
                 
-                //create views of buffers as Uint8 arrays
-                const starPosUint8 = new Uint8Array(starPosBuf);
-                const starVelUint8 = new Uint8Array(starVelBuf);
+                //create view of buffer as Uint8 array
+                const starStatesUint8 = new Uint8Array(starStateBuf);
                 
                 //store star states in textures
                 const gl = this.gl;
-                this.starPosTexture = createTexture(gl, gl.NEAREST,
-                        starPosUint8, this.STAR_TEXEL_COUNT, 1);
-                this.starVelTexture = createTexture(gl, gl.NEAREST,
-                        starVelUint8, this.STAR_TEXEL_COUNT, 1);
+                this.starStateTexture = createTexture(gl, gl.NEAREST, starStatesUint8,
+                        this.starStateTextureRes, this.starStateTextureRes);
                 
                 //store star indices in buffer
                 var starIndices = new Float32Array(this.starCount);
@@ -301,11 +307,11 @@ class Universe {
                 const gl = this.gl;
                 gl.useProgram(this.starShaderProgram.program);
                 bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
-                bindTexture(gl, this.starPosTexture, 0);
+                bindTexture(gl, this.starStateTexture, 0);
                 gl.uniformMatrix4fv(this.starShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
-                gl.uniform1f(this.starShaderProgram.u_star_res, this.STAR_TEXEL_COUNT);
+                gl.uniform1f(this.starShaderProgram.u_star_res, this.starStateTextureRes);
                 gl.drawArrays(gl.POINTS, 0, this.starCount);
         }
         
@@ -333,7 +339,7 @@ class Universe {
         }
         
         updateStars() {
-                //TODO method stub
+                const gl = this.gl;
         }
 }
 
