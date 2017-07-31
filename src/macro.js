@@ -7,7 +7,7 @@ const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 2.0;
 
 const UNIVERSE_BOUNDARY = 100000;
-const BLACK_HOLE_GRAVITY = 1000.0;
+const BLACK_HOLE_GRAVITY = 2000.0;
 
 const MOUSE_SENSITIVITY = 800.0;
 
@@ -176,11 +176,16 @@ class Universe {
                         this.starCount += galaxySizes[i];
                 }
                 
-                //generate galaxies
-                
                 //allocate star position and velocity buffers
-                const TEXELS_PER_STAR = 4;
+                
+                const TEXELS_PER_STAR = 6;
                 this.starStateTextureRes = Math.ceil(Math.sqrt(this.starCount * TEXELS_PER_STAR));
+                //If the texture is not a multiple of TEXELS_PER_STAR, rounding
+                //errors in the texture sampling can cause some stars to be out
+                //of place
+                this.starStateTextureRes = Math.ceil(this.starStateTextureRes / TEXELS_PER_STAR) *
+                        TEXELS_PER_STAR;
+                
                 this.starTexelCount =
                         this.starStateTextureRes * this.starStateTextureRes;
                 console.log('using ' + this.starStateTextureRes + 'x' +
@@ -190,6 +195,7 @@ class Universe {
                 var starStateBuf =  new ArrayBuffer(this.starTexelCount * 4);
                 var starStatesUint32 = new Uint32Array(starStateBuf);
                 
+                //generate black holes
                 var arrayOffset = 0;
                 var galaxyRadius;
                 var starDist, starAngle;
