@@ -115,14 +115,6 @@ function randFloat(min, max) {
         return Math.random() * (max - min) + min;
 }
 
-function floatToUniverseCoord32(f) {
-        if (Math.abs(f) > UNIVERSE_BOUNDARY) {
-                throw 'value too big: ' + f + ' (must be no larger than ' +
-                        UNIVERSE_BOUNDARY + ')';
-        }
-        return Math.floor(f / UNIVERSE_BOUNDARY * 0x7FFFFFFF) + 0x7FFFFFFF;
-}
-
 class BlackHole {
         constructor() {
                 this.pos = vec3.fromValues(
@@ -159,6 +151,9 @@ class Universe {
                 this.starCount = 0;
                 this.blackHoles = [];
                 this.genesis();
+                
+                this.blackHolePositions = new Float32Array(this.blackHoles.length * 3);
+                this.blackHolePosBuffer = gl.createBuffer();
                 
                 this.starStateBuf = gl.createFramebuffer();
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
@@ -295,23 +290,24 @@ class Universe {
         drawBlackHoles() {
                 const gl = this.gl;
                 
-                var blackHolePositions = new Float32Array(this.blackHoles.length * 3);
                 var arrayOffset = 0;
                 for (var bh of this.blackHoles) {
-                        blackHolePositions[arrayOffset++] = bh.pos[0];
-                        blackHolePositions[arrayOffset++] = bh.pos[1];
-                        blackHolePositions[arrayOffset++] = bh.pos[2];
+                        this.blackHolePositions[arrayOffset++] = bh.pos[0];
+                        this.blackHolePositions[arrayOffset++] = bh.pos[1];
+                        this.blackHolePositions[arrayOffset++] = bh.pos[2];
                 }
-                const blackHolePosBuffer = createBuffer(gl, blackHolePositions);
                 
                 gl.useProgram(this.blackHoleShaderProgram.program);
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
                 
-                bindAttribute(gl, blackHolePosBuffer, this.blackHoleShaderProgram.a_pos, 3);
-                gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.blackHolePosBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, this.blackHolePositions, gl.STATIC_DRAW);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
                 
-                gl.deleteBuffer(blackHolePosBuffer);
+                bindAttribute(gl, this.blackHolePosBuffer,
+                        this.blackHoleShaderProgram.a_pos, 3);
+                gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
         }
         
         drawStars() {
