@@ -172,6 +172,16 @@ class Universe {
                 this.starCount = 0;
                 this.blackHoles = [];
                 this.genesis();
+                
+                this.starVAO = gl.createVertexArray();
+                gl.bindVertexArray(this.starVAO);
+                bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
+                gl.bindVertexArray(null);
+                
+//                this.quadVBO = gl.createVertexArray();
+//                gl.bindVertexArray(this.starVAO);
+//                bindAttribute(gl, this.quadBuffer, this.starUpdateShaderProgram.a_pos, 2);
+//                gl.bindVertexArray(null);
         }
         
         genesis() {
@@ -312,6 +322,7 @@ class Universe {
                 gl.useProgram(this.blackHoleShaderProgram.program);
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
+                
                 bindAttribute(gl, blackHolePosBuffer, this.blackHoleShaderProgram.a_pos, 3);
                 gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
                 
@@ -321,14 +332,17 @@ class Universe {
         drawStars() {
                 const gl = this.gl;
                 gl.useProgram(this.starShaderProgram.program);
-                bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
+                
                 bindTexture(gl, this.starStateTexture, 0);
                 gl.uniformMatrix4fv(this.starShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
                 gl.uniform1f(this.starShaderProgram.u_star_res, this.starStateTextureRes);
                 gl.uniform1f(this.starShaderProgram.u_universe_boundary, UNIVERSE_BOUNDARY);
+                
+                gl.bindVertexArray(this.starVAO);
                 gl.drawArrays(gl.POINTS, 0, this.starCount);
+                gl.bindVertexArray(null);
         }
         
         update() {
