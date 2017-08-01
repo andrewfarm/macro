@@ -104,6 +104,10 @@ layout(location=0) out vec4 new_star_pos;\n\
 layout(location=1) out vec4 new_star_vel;\n\
 \n\
 void main() {\n\
+        vec3 pos = texture(u_star_pos, v_tex_pos).xyz;\n\
+        vec3 vel = texture(u_star_vel, v_tex_pos).xyz;\n\
+        new_star_pos = vec4(pos + vel, 1.0);\n\
+        new_star_vel = vec4(vel, 1.0);\n\
 }\n\
 ';
 
@@ -171,8 +175,8 @@ class Universe {
                 
                 this.quadBuffer = createBuffer(gl, new Float32Array(
                         [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
-                this.quadVBO = gl.createVertexArray();
-                gl.bindVertexArray(this.quadVBO);
+                this.quadVAO = gl.createVertexArray();
+                gl.bindVertexArray(this.quadVAO);
                 bindAttribute(gl, this.quadBuffer, this.starUpdateShaderProgram.a_pos, 2);
                 gl.bindVertexArray(null);
         }
@@ -351,6 +355,18 @@ class Universe {
         
         updateStars() {
                 const gl = this.gl;
+                gl.useProgram(this.starUpdateShaderProgram.program);
+                
+                bindTexture(gl, this.starPosTexture, 0);
+                bindTexture(gl, this.starVelTexture, 1);
+                gl.uniform1i(this.starUpdateShaderProgram.u_star_pos, 0);
+                gl.uniform1i(this.starUpdateShaderProgram.u_star_vel, 1);
+                
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
+                gl.bindVertexArray(this.quadVAO);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.bindVertexArray(null);
         }
 }
 
