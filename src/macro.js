@@ -191,7 +191,8 @@ class Universe {
                         this.starStateTextureRes + ' texture for ' +
                         this.starCount + ' stars (' + this.starTexelCount +
                         ' texels)');
-                var starStateBuf =  new Float32Array(this.starTexelCount * 4);
+                var starPosBuf = new Float32Array(this.starTexelCount * 4);
+                var starVelBuf = new Float32Array(this.starTexelCount * 4);
                 
                 //generate black holes
                 var arrayOffset = 0;
@@ -216,9 +217,13 @@ class Universe {
                                 starVelY = starSpeed *  Math.cos(starAngle);
                                 starVelZ = 0.0;
                                 
-                                starStateBuf[arrayOffset]     = this.blackHoles[i].pos[0] + starPosX;
-                                starStateBuf[arrayOffset + 1] = this.blackHoles[i].pos[1] + starPosY;
-                                starStateBuf[arrayOffset + 2] = this.blackHoles[i].pos[2] + starPosZ;
+                                starPosBuf[arrayOffset]     = this.blackHoles[i].pos[0] + starPosX;
+                                starPosBuf[arrayOffset + 1] = this.blackHoles[i].pos[1] + starPosY;
+                                starPosBuf[arrayOffset + 2] = this.blackHoles[i].pos[2] + starPosZ;
+                                
+                                starVelBuf[arrayOffset]     = this.blackHoles[i].vel[0] + starVelX;
+                                starVelBuf[arrayOffset + 1] = this.blackHoles[i].vel[1] + starVelY;
+                                starVelBuf[arrayOffset + 2] = this.blackHoles[i].vel[2] + starVelZ;
                                 
                                 arrayOffset += 4;
                         }
@@ -226,9 +231,9 @@ class Universe {
                 
                 //store star states in textures
                 const gl = this.gl;
-                console.log('this.starStateTextureRes', this.starStateTextureRes);
-                console.log('starStateBuf', starStateBuf);
-                this.starStateTexture = createTexture(gl, gl.NEAREST, starStateBuf,
+                this.starPosTexture = createTexture(gl, gl.NEAREST, starPosBuf,
+                        this.starStateTextureRes, this.starStateTextureRes);
+                this.starVelTexture = createTexture(gl, gl.NEAREST, starVelBuf,
                         this.starStateTextureRes, this.starStateTextureRes);
                 
                 //store star indices in buffer
@@ -303,7 +308,7 @@ class Universe {
                 const gl = this.gl;
                 gl.useProgram(this.starShaderProgram.program);
                 
-                bindTexture(gl, this.starStateTexture, 0);
+                bindTexture(gl, this.starPosTexture, 0);
                 gl.uniformMatrix4fv(this.starShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
