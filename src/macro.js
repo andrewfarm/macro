@@ -100,6 +100,9 @@ uniform sampler2D u_star_vel;\n\
 \n\
 in vec2 v_tex_pos;\n\
 \n\
+layout(location=0) out vec4 new_star_pos;\n\
+layout(location=1) out vec4 new_star_vel;\n\
+\n\
 void main() {\n\
 }\n\
 ';
@@ -140,7 +143,7 @@ class Universe {
                 
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
                 this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
-//                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT, STAR_UPDATE_FRAG);
+                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT, STAR_UPDATE_FRAG);
                 
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
@@ -173,10 +176,10 @@ class Universe {
                 
                 this.quadBuffer = createBuffer(gl, new Float32Array(
                         [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
-//                this.quadVBO = gl.createVertexArray();
-//                gl.bindVertexArray(this.starVAO);
-//                bindAttribute(gl, this.quadBuffer, this.starUpdateShaderProgram.a_pos, 2);
-//                gl.bindVertexArray(null);
+                this.quadVBO = gl.createVertexArray();
+                gl.bindVertexArray(this.quadVBO);
+                bindAttribute(gl, this.quadBuffer, this.starUpdateShaderProgram.a_pos, 2);
+                gl.bindVertexArray(null);
         }
         
         genesis() {
