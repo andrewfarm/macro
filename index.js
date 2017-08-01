@@ -22,7 +22,8 @@ if (gl) {
                 universe.nextFrame();
                 requestAnimationFrame(render);
         }
-        render();
+        requestAnimationFrame(render);
+//        window.setInterval(render, 250);
 } else {
         document.body.innerHTML =
                 '<div>\

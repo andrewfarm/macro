@@ -105,7 +105,7 @@ layout(location=1) out vec4 new_star_vel;\n\
 void main() {\n\
         vec3 pos = texture(u_star_pos, v_tex_pos).xyz;\n\
         vec3 vel = texture(u_star_vel, v_tex_pos).xyz;\n\
-        new_star_pos = vec4(pos, 1.0);\n\
+        new_star_pos = vec4(pos + vel, 1.0);\n\
         new_star_vel = vec4(vel, 1.0);\n\
 }\n\
 ';
@@ -242,7 +242,7 @@ class Universe {
                 //create empty textures to write new star states into
                 this.starPosTexture1 = createEmptyFloatTexture(gl, gl.NEAREST,
                         this.starStateTextureRes, this.starStateTextureRes);
-                this.starPosTexture1 = createEmptyFloatTexture(gl, gl.NEAREST,
+                this.starVelTexture1 = createEmptyFloatTexture(gl, gl.NEAREST,
                         this.starStateTextureRes, this.starStateTextureRes);
                 
                 //store star indices in buffer
@@ -401,7 +401,7 @@ function createEmptyFloatTexture(gl, filter, width, height) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
         
-        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA16F, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA16F, width, height);
         console.log('created empty Float32 texture');
         
         gl.bindTexture(gl.TEXTURE_2D, null);
