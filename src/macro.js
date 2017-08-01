@@ -80,12 +80,13 @@ const QUAD_VERT = '\
 precision mediump float;\n\
 \n\
 in vec2 a_pos;\n\
+in vec2 a_tex_pos;\n\
 \n\
 out vec2 v_tex_pos;\n\
 \n\
 void main() {\n\
-        v_tex_pos = a_pos;\n\
-        gl_Position = vec4(1.0 - 2.0 * a_pos, 0, 1);\n\
+        v_tex_pos = a_tex_pos;\n\
+        gl_Position = vec4(a_pos, 0, 1);\n\
 }\n\
 ';
 
@@ -166,11 +167,14 @@ class Universe {
                 bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
                 gl.bindVertexArray(null);
                 
-                this.quadBuffer = createBuffer(gl, new Float32Array(
+                this.quadPosBuffer = createBuffer(gl, new Float32Array(
+                        [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
+                this.quadTexPosBuffer = createBuffer(gl, new Float32Array(
                         [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
                 this.quadVAO = gl.createVertexArray();
                 gl.bindVertexArray(this.quadVAO);
-                bindAttribute(gl, this.quadBuffer, this.starUpdateShaderProgram.a_pos, 2);
+                bindAttribute(gl, this.quadPosBuffer, this.starUpdateShaderProgram.a_pos, 2);
+                bindAttribute(gl, this.quadTexPosBuffer, this.starUpdateShaderProgram.a_tex_pos, 2);
                 gl.bindVertexArray(null);
         }
         
@@ -186,8 +190,6 @@ class Universe {
                 //allocate star position and velocity buffers
                 
                 this.starStateTextureRes = Math.ceil(Math.sqrt(this.starCount));
-//                this.starStateTextureRes = Math.pow(2, Math.ceil(Math.log(
-//                        this.starStateTextureRes) / Math.log(2)));
                 
                 this.starTexelCount =
                         this.starStateTextureRes * this.starStateTextureRes;
