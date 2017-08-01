@@ -44,7 +44,6 @@ precision mediump float;\n\
 uniform mat4 u_mvp_matrix;\n\
 uniform sampler2D u_star_pos;\n\
 uniform float u_star_res;\n\
-uniform float u_universe_boundary;\n\
 \n\
 in float a_index;\n\
 \n\
@@ -106,7 +105,7 @@ layout(location=1) out vec4 new_star_vel;\n\
 void main() {\n\
         vec3 pos = texture(u_star_pos, v_tex_pos).xyz;\n\
         vec3 vel = texture(u_star_vel, v_tex_pos).xyz;\n\
-        new_star_pos = vec4(pos + vel, 1.0);\n\
+        new_star_pos = vec4(pos, 1.0);\n\
         new_star_vel = vec4(vel, 1.0);\n\
 }\n\
 ';
@@ -160,13 +159,7 @@ class Universe {
                 this.blackHolePosBuffer = gl.createBuffer();
                 
                 this.starStateBuf = gl.createFramebuffer();
-                gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
-                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
-                        gl.TEXTURE_2D, this.starPosTexture, 0);
-                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1,
-                        gl.TEXTURE_2D, this.starVelTexture, 0);
-                gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                this.updateFramebufferAttachments();
                 
                 this.starVAO = gl.createVertexArray();
                 gl.bindVertexArray(this.starVAO);
@@ -193,6 +186,8 @@ class Universe {
                 //allocate star position and velocity buffers
                 
                 this.starStateTextureRes = Math.ceil(Math.sqrt(this.starCount));
+//                this.starStateTextureRes = Math.pow(2, Math.ceil(Math.log(
+//                        this.starStateTextureRes) / Math.log(2)));
                 
                 this.starTexelCount =
                         this.starStateTextureRes * this.starStateTextureRes;
@@ -240,9 +235,14 @@ class Universe {
                 
                 //store star states in textures
                 const gl = this.gl;
-                this.starPosTexture = createTexture(gl, gl.NEAREST, starPosBuf,
+                this.starPosTexture0 = createTexture(gl, gl.NEAREST, starPosBuf,
                         this.starStateTextureRes, this.starStateTextureRes);
-                this.starVelTexture = createTexture(gl, gl.NEAREST, starVelBuf,
+                this.starVelTexture0 = createTexture(gl, gl.NEAREST, starVelBuf,
+                        this.starStateTextureRes, this.starStateTextureRes);
+                //create empty textures to write new star states into
+                this.starPosTexture1 = createEmptyFloatTexture(gl, gl.NEAREST,
+                        this.starStateTextureRes, this.starStateTextureRes);
+                this.starPosTexture1 = createEmptyFloatTexture(gl, gl.NEAREST,
                         this.starStateTextureRes, this.starStateTextureRes);
                 
                 //store star indices in buffer
@@ -274,6 +274,7 @@ class Universe {
         nextFrame() {
                 this.draw();
                 this.update();
+                this.swapStarStateBuffers();
         }
         
         draw() {
@@ -318,12 +319,11 @@ class Universe {
                 const gl = this.gl;
                 gl.useProgram(this.starShaderProgram.program);
                 
-                bindTexture(gl, this.starPosTexture, 0);
+                bindTexture(gl, this.starPosTexture0, 0);
                 gl.uniformMatrix4fv(this.starShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
                 gl.uniform1f(this.starShaderProgram.u_star_res, this.starStateTextureRes);
-                gl.uniform1f(this.starShaderProgram.u_universe_boundary, UNIVERSE_BOUNDARY);
                 
                 gl.bindVertexArray(this.starVAO);
                 gl.drawArrays(gl.POINTS, 0, this.starCount);
@@ -355,10 +355,11 @@ class Universe {
         
         updateStars() {
                 const gl = this.gl;
+                gl.viewport(0, 0, this.starStateTextureRes, this.starStateTextureRes);
                 gl.useProgram(this.starUpdateShaderProgram.program);
                 
-                bindTexture(gl, this.starPosTexture, 0);
-                bindTexture(gl, this.starVelTexture, 1);
+                bindTexture(gl, this.starPosTexture0, 0);
+                bindTexture(gl, this.starVelTexture0, 1);
                 gl.uniform1i(this.starUpdateShaderProgram.u_star_pos, 0);
                 gl.uniform1i(this.starUpdateShaderProgram.u_star_vel, 1);
                 
@@ -368,7 +369,45 @@ class Universe {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.bindVertexArray(null);
         }
+        
+        swapStarStateBuffers() {
+                var tempPos = this.starPosTexture1;
+                this.starPosTexture1 = this.starPosTexture0;
+                this.starPosTexture0 = tempPos;
+                
+                var tempVel = this.starVelTexture1;
+                this.starVelTexture1 = this.starVelTexture0;
+                this.starVelTexture0 = tempVel;
+                
+                this.updateFramebufferAttachments();
+        }
+        
+        updateFramebufferAttachments() {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                        gl.TEXTURE_2D, this.starPosTexture1, 0);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1,
+                        gl.TEXTURE_2D, this.starVelTexture1, 0);
+                gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
 }
+
+function createEmptyFloatTexture(gl, filter, width, height) {
+        var texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+        
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA16F, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        console.log('created empty Float32 texture');
+        
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        return texture;
+}
+
 
 /*
  The code below contains utility functions for common WebGL features.
