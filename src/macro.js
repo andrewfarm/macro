@@ -95,19 +95,32 @@ const STAR_UPDATE_FRAG = '\
 \n\
 precision mediump float;\n\
 \n\
+uniform float u_bh_gravity;\n\
 uniform sampler2D u_star_pos;\n\
 uniform sampler2D u_star_vel;\n\
+#define BH_COUNT bh_count_to_replace\n\
+uniform vec3 u_bh_pos[BH_COUNT];\n\
 \n\
 in vec2 v_tex_pos;\n\
 \n\
 layout(location=0) out vec4 new_star_pos;\n\
 layout(location=1) out vec4 new_star_vel;\n\
 \n\
+vec3 gAcc(vec3 starPos, vec3 bhPos) {\n\
+        vec3 dist = bhPos - starPos;\n\
+        return normalize(dist) * u_bh_gravity / dot(dist, dist);\n\
+}\n\
+\n\
 void main() {\n\
         vec3 pos = texture(u_star_pos, v_tex_pos).xyz;\n\
         vec3 vel = texture(u_star_vel, v_tex_pos).xyz;\n\
-        new_star_pos = vec4(pos + vel, 1.0);\n\
-        new_star_vel = vec4(vel, 1.0);\n\
+        vec3 acc = vec3(0.0);\n\
+        for (int i = 0; i < BH_COUNT; i++) {\n\
+                acc += gAcc(pos, u_bh_pos[i]);\n\
+        }\n\
+        vec3 newVel = vel + acc;\n\
+        new_star_pos = vec4(pos + newVel, 0.0);\n\
+        new_star_vel = vec4(newVel, 0.0);\n\
 }\n\
 ';
 
@@ -137,10 +150,6 @@ class Universe {
                 this.gl = gl;
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
-                this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
-                this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
-                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT, STAR_UPDATE_FRAG);
-                
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
                         vec3.fromValues(0.0, 0.0, INITIAL_BOUNDS * 2.0),
@@ -155,6 +164,13 @@ class Universe {
                 this.starCount = 0;
                 this.blackHoles = [];
                 this.genesis();
+                
+                this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
+                this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
+                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT,
+                        STAR_UPDATE_FRAG.replace(/bh_count_to_replace/, this.blackHoles.length));
+                this.starUpdateShaderProgram.u_bh_pos = gl.getUniformLocation(
+                        this.starUpdateShaderProgram.program, 'u_bh_pos[0]');
                 
                 this.blackHolePositions = new Float32Array(this.blackHoles.length * 3);
                 this.blackHolePosBuffer = gl.createBuffer();
@@ -274,6 +290,7 @@ class Universe {
         }
         
         nextFrame() {
+                this.updateBlackHolePosBuffer();
                 this.draw();
                 this.update();
                 this.swapStarStateBuffers();
@@ -307,10 +324,6 @@ class Universe {
                 gl.useProgram(this.blackHoleShaderProgram.program);
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
-                
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.blackHolePosBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, this.blackHolePositions, gl.STATIC_DRAW);
-                gl.bindBuffer(gl.ARRAY_BUFFER, null);
                 
                 bindAttribute(gl, this.blackHolePosBuffer,
                         this.blackHoleShaderProgram.a_pos, 3);
@@ -362,8 +375,10 @@ class Universe {
                 
                 bindTexture(gl, this.starPosTexture0, 0);
                 bindTexture(gl, this.starVelTexture0, 1);
+                gl.uniform1f(this.starUpdateShaderProgram.u_bh_gravity, BLACK_HOLE_GRAVITY);
                 gl.uniform1i(this.starUpdateShaderProgram.u_star_pos, 0);
                 gl.uniform1i(this.starUpdateShaderProgram.u_star_vel, 1);
+                gl.uniform3fv(this.starUpdateShaderProgram.u_bh_pos, this.blackHolePositions);
                 
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
                 gl.bindVertexArray(this.quadVAO);
@@ -392,6 +407,12 @@ class Universe {
                         gl.TEXTURE_2D, this.starVelTexture1, 0);
                 gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+        
+        updateBlackHolePosBuffer() {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.blackHolePosBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, this.blackHolePositions, gl.DYNAMIC_DRAW);
+                gl.bindBuffer(gl.ARRAY_BUFFER, null);
         }
 }
 
