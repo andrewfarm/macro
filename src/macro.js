@@ -54,24 +54,11 @@ vec4 getTexelColor(float index) {\n\
                 floor(index / u_star_res) / u_star_res));\n\
 }\n\
 \n\
-float colorToFloat32(vec4 color) {\n\
-        float universeCoord =\n\
-                floor(color.r * 255.0) +\n\
-                floor(color.g * 255.0) * float(0x100) +\n\
-                floor(color.b * 255.0) * float(0x10000) +\n\
-                floor(color.a * 255.0) * float(0x1000000);\n\
-        return (universeCoord - float(0x7FFFFFFF)) / float(0x7FFFFFFF) * u_universe_boundary;\n\
-}\n\
-\n\
 void main() {\n\
-        vec4 xColor = getTexelColor(a_index);\n\
-        vec4 yColor = getTexelColor(a_index + 1.0);\n\
-        vec4 zColor = getTexelColor(a_index + 2.0);\n\
-        gl_Position = u_mvp_matrix * vec4(1.0 * vec3(\n\
-                colorToFloat32(xColor),\n\
-                colorToFloat32(yColor),\n\
-                colorToFloat32(zColor)),\n\
-                1.0);\n\
+        vec4 posColor = texture(u_star_pos, vec2(\n\
+                fract(a_index / u_star_res),\n\
+                floor(a_index / u_star_res) / u_star_res));\n\
+        gl_Position = u_mvp_matrix * vec4(posColor.xyz, 1.0);\n\
         gl_PointSize = 2000.0 / gl_Position.z;\n\
 }\n\
 ';
@@ -149,6 +136,7 @@ class BlackHole {
 class Universe {
         constructor(gl) {
                 this.gl = gl;
+                console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
                 this.quadBuffer = createBuffer(gl, new Float32Array(
                         [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
@@ -195,13 +183,7 @@ class Universe {
                 
                 //allocate star position and velocity buffers
                 
-                const TEXELS_PER_STAR = 6;
-                this.starStateTextureRes = Math.ceil(Math.sqrt(this.starCount * TEXELS_PER_STAR));
-                //If the texture is not a multiple of TEXELS_PER_STAR, rounding
-                //errors in the texture sampling can cause some stars to be out
-                //of place
-                this.starStateTextureRes = Math.ceil(this.starStateTextureRes / TEXELS_PER_STAR) *
-                        TEXELS_PER_STAR;
+                this.starStateTextureRes = Math.ceil(Math.sqrt(this.starCount));
                 
                 this.starTexelCount =
                         this.starStateTextureRes * this.starStateTextureRes;
@@ -209,8 +191,7 @@ class Universe {
                         this.starStateTextureRes + ' texture for ' +
                         this.starCount + ' stars (' + this.starTexelCount +
                         ' texels)');
-                var starStateBuf =  new ArrayBuffer(this.starTexelCount * 4);
-                var starStatesUint32 = new Uint32Array(starStateBuf);
+                var starStateBuf =  new Float32Array(this.starTexelCount * 4);
                 
                 //generate black holes
                 var arrayOffset = 0;
@@ -235,36 +216,25 @@ class Universe {
                                 starVelY = starSpeed *  Math.cos(starAngle);
                                 starVelZ = 0.0;
                                 
-                                starStatesUint32[arrayOffset] = floatToUniverseCoord32(
-                                        this.blackHoles[i].pos[0] + starPosX);
-                                starStatesUint32[arrayOffset + 1] = floatToUniverseCoord32(
-                                        this.blackHoles[i].pos[1] + starPosY);
-                                starStatesUint32[arrayOffset + 2] = floatToUniverseCoord32(
-                                        this.blackHoles[i].pos[2] + starPosZ);
+                                starStateBuf[arrayOffset]     = this.blackHoles[i].pos[0] + starPosX;
+                                starStateBuf[arrayOffset + 1] = this.blackHoles[i].pos[1] + starPosY;
+                                starStateBuf[arrayOffset + 2] = this.blackHoles[i].pos[2] + starPosZ;
                                 
-                                starStatesUint32[arrayOffset + 3] = floatToUniverseCoord32(
-                                        this.blackHoles[i].vel[0] + starVelX);
-                                starStatesUint32[arrayOffset + 4] = floatToUniverseCoord32(
-                                        this.blackHoles[i].vel[1] + starVelY);
-                                starStatesUint32[arrayOffset + 5] = floatToUniverseCoord32(
-                                        this.blackHoles[i].vel[2] + starVelZ);
-                                
-                                arrayOffset += TEXELS_PER_STAR;
+                                arrayOffset += 4;
                         }
                 }
                 
-                //create view of buffer as Uint8 array
-                const starStatesUint8 = new Uint8Array(starStateBuf);
-                
                 //store star states in textures
                 const gl = this.gl;
-                this.starStateTexture = createTexture(gl, gl.NEAREST, starStatesUint8,
+                console.log('this.starStateTextureRes', this.starStateTextureRes);
+                console.log('starStateBuf', starStateBuf);
+                this.starStateTexture = createTexture(gl, gl.NEAREST, starStateBuf,
                         this.starStateTextureRes, this.starStateTextureRes);
                 
                 //store star indices in buffer
                 var starIndices = new Float32Array(this.starCount);
                 for (var i = 0; i < this.starCount; i++) {
-                        starIndices[i] = i * TEXELS_PER_STAR;
+                        starIndices[i] = i;
                 }
                 this.starIndexBuffer = createBuffer(gl, starIndices);
                 
@@ -447,6 +417,10 @@ function createTexture(gl, filter, data, width, height) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
         if (data instanceof Uint8Array) {
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+                console.log('created Uint8 texture');
+        } else if (data instanceof Float32Array) {
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+                console.log('created Float32 texture');
         } else {
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
         }
