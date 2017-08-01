@@ -1,13 +1,13 @@
 const MIN_GALAXIES = 2;
 const MAX_GALAXIES = 2;
-const MIN_STARS_IN_GALAXY = 1000;
-const MAX_STARS_IN_GALAXY = 1000;
+const MIN_STARS_IN_GALAXY = 1000000;
+const MAX_STARS_IN_GALAXY = 1000000;
 
 const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 2.0;
 
 const UNIVERSE_BOUNDARY = 100000;
-const BLACK_HOLE_GRAVITY = 2000.0;
+const BLACK_HOLE_GRAVITY = 5000.0;
 
 const MOUSE_SENSITIVITY = 800.0;
 
@@ -58,7 +58,7 @@ void main() {\n\
                 fract(a_index / u_star_res),\n\
                 floor(a_index / u_star_res) / u_star_res));\n\
         gl_Position = u_mvp_matrix * vec4(posColor.xyz, 1.0);\n\
-        gl_PointSize = 2000.0 / gl_Position.z;\n\
+        gl_PointSize = 1000.0 / gl_Position.z;\n\
 }\n\
 ';
 
@@ -70,7 +70,7 @@ precision mediump float;\n\
 out vec4 fragColor;\n\
 \n\
 void main() {\n\
-        fragColor = vec4(0.0, 1.0, 1.0, 1.0);\n\
+        fragColor = vec4(1.0, 1.0, 1.0, 0.2);\n\
 }\n\
 ';
 
@@ -227,7 +227,7 @@ class Universe {
                         this.blackHoles[i] = new BlackHole();
                         
                         //generate stars
-                        galaxyRadius = galaxySizes[i] * 0.2; //TODO
+                        galaxyRadius = Math.sqrt(galaxySizes[i] / MIN_STARS_IN_GALAXY) * 100.0;
                         for (var j = 0; j < galaxySizes[i]; j++) {
                                 starDist = randFloat(0, galaxyRadius);
                                 starAngle = randFloat(0, 2.0 * Math.PI);
@@ -298,6 +298,9 @@ class Universe {
         
         draw() {
                 const gl = this.gl;
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+                
                 gl.enable(gl.DEPTH_TEST);
                 gl.depthFunc(gl.LESS);
                 gl.disable(gl.STENCIL_TEST);
@@ -370,6 +373,7 @@ class Universe {
         
         updateStars() {
                 const gl = this.gl;
+                gl.disable(gl.BLEND);
                 gl.viewport(0, 0, this.starStateTextureRes, this.starStateTextureRes);
                 gl.useProgram(this.starUpdateShaderProgram.program);
                 
