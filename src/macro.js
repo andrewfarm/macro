@@ -138,10 +138,6 @@ class Universe {
                 this.gl = gl;
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
-                this.quadBuffer = createBuffer(gl, new Float32Array(
-                        [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
-                this.framebuffer = gl.createFramebuffer();
-                
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
                 this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
 //                this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT, STAR_UPDATE_FRAG);
@@ -161,11 +157,22 @@ class Universe {
                 this.blackHoles = [];
                 this.genesis();
                 
+                this.starStateBuf = gl.createFramebuffer();
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                        gl.TEXTURE_2D, this.starPosTexture, 0);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1,
+                        gl.TEXTURE_2D, this.starVelTexture, 0);
+                gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                
                 this.starVAO = gl.createVertexArray();
                 gl.bindVertexArray(this.starVAO);
                 bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
                 gl.bindVertexArray(null);
                 
+                this.quadBuffer = createBuffer(gl, new Float32Array(
+                        [0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
 //                this.quadVBO = gl.createVertexArray();
 //                gl.bindVertexArray(this.starVAO);
 //                bindAttribute(gl, this.quadBuffer, this.starUpdateShaderProgram.a_pos, 2);
@@ -273,7 +280,7 @@ class Universe {
                 gl.depthFunc(gl.LESS);
                 gl.disable(gl.STENCIL_TEST);
                 
-                bindFramebuffer(gl, null);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
                 gl.clearColor(0.0, 0.0, 0.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -449,11 +456,4 @@ function bindAttribute(gl, buffer, attribute, numComponents) {
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.enableVertexAttribArray(attribute);
         gl.vertexAttribPointer(attribute, numComponents, gl.FLOAT, false, 0, 0);
-}
-
-function bindFramebuffer(gl, framebuffer, texture) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        if (texture) {
-                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-        }
 }
