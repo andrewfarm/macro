@@ -10,12 +10,22 @@ if (gl) {
         canvas.height = window.innerHeight;// * pixelRatio;
         var rect = canvas.getBoundingClientRect();
         
-        const universe = new Universe(gl);
+        var universe = new Universe(gl);
         canvas.addEventListener('mousemove',
                 function(event) {
                         universe.mouseMoved(
                                 event.clientX - rect.left,
                                 event.clientY - rect.top);
+                });
+        document.addEventListener('keypress',
+                function(event) {
+                        if (event.which === 108) { // 'l'
+                                universe.lightMode = !universe.lightMode;
+                        } else if (event.which === 13) { // enter
+                                var temp = universe;
+                                universe = new Universe(gl);
+                                universe.lightMode = temp.lightMode;
+                        }
                 });
 
         function render() {

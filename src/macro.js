@@ -1,7 +1,7 @@
 const MIN_GALAXIES = 2;
 const MAX_GALAXIES = 2;
-const MIN_STARS_IN_GALAXY = 1000000;
-const MAX_STARS_IN_GALAXY = 1000000;
+const MIN_STARS_IN_GALAXY = 500000;
+const MAX_STARS_IN_GALAXY = 500000;
 
 const INITIAL_BOUNDS = 500.0;
 const INITIAL_SPEED_LIMIT = 2.0;
@@ -67,10 +67,12 @@ const STAR_FRAG = '\
 \n\
 precision mediump float;\n\
 \n\
+uniform vec4 u_color;\n\
+\n\
 out vec4 fragColor;\n\
 \n\
 void main() {\n\
-        fragColor = vec4(0.01);\n\
+        fragColor = u_color;\n\
 }\n\
 ';
 
@@ -150,6 +152,8 @@ class Universe {
                 this.gl = gl;
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
+                this.lightMode = false;
+                
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
                         vec3.fromValues(0.0, 0.0, INITIAL_BOUNDS * 2.0),
@@ -227,7 +231,7 @@ class Universe {
                         this.blackHoles[i] = new BlackHole();
                         
                         //generate stars
-                        galaxyRadius = Math.sqrt(galaxySizes[i] / MIN_STARS_IN_GALAXY) * 100.0;
+                        galaxyRadius = Math.sqrt(galaxySizes[i] / MIN_STARS_IN_GALAXY) * 150.0;
                         for (var j = 0; j < galaxySizes[i]; j++) {
                                 starDist = randFloat(0, galaxyRadius);
                                 starAngle = randFloat(0, 2.0 * Math.PI);
@@ -299,12 +303,16 @@ class Universe {
         draw() {
                 const gl = this.gl;
                 gl.enable(gl.BLEND);
-                gl.blendFunc(gl.ONE, gl.ONE);
+                this.lightMode ?
+                        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA) :
+                        gl.blendFunc(gl.ONE, gl.ONE);
                 gl.disable(gl.STENCIL_TEST);
                 
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-                gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                this.lightMode ?
+                        gl.clearColor(1, 1, 1, 1) :
+                        gl.clearColor(0, 0, 0, 0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 
 //                this.drawBlackHoles();
@@ -333,6 +341,8 @@ class Universe {
                         false, this.mvpMatrix);
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
                 gl.uniform1f(this.starShaderProgram.u_star_res, this.starStateTextureRes);
+                gl.uniform4fv(this.starShaderProgram.u_color,
+                        this.lightMode ? [0, 0, 0, 0.02] : [0.02, 0.02, 0.02, 1]);
                 
                 gl.bindVertexArray(this.starVAO);
                 gl.drawArrays(gl.POINTS, 0, this.starCount);
@@ -426,7 +436,7 @@ function createEmptyFloatTexture(gl, filter, width, height) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
         
-        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA16F, width, height);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, width, height);
         console.log('created empty Float32 texture');
         
         gl.bindTexture(gl.TEXTURE_2D, null);
@@ -510,7 +520,7 @@ function createTexture(gl, filter, data, width, height) {
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
                 console.log('created Uint8 texture');
         } else if (data instanceof Float32Array) {
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
                 console.log('created Float32 texture');
         } else {
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
