@@ -70,7 +70,7 @@ precision mediump float;\n\
 out vec4 fragColor;\n\
 \n\
 void main() {\n\
-        fragColor = vec4(1.0, 1.0, 1.0, 0.2);\n\
+        fragColor = vec4(0.01);\n\
 }\n\
 ';
 
@@ -299,10 +299,7 @@ class Universe {
         draw() {
                 const gl = this.gl;
                 gl.enable(gl.BLEND);
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-                
-                gl.enable(gl.DEPTH_TEST);
-                gl.depthFunc(gl.LESS);
+                gl.blendFunc(gl.ONE, gl.ONE);
                 gl.disable(gl.STENCIL_TEST);
                 
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -310,19 +307,12 @@ class Universe {
                 gl.clearColor(0.0, 0.0, 0.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 
-                this.drawBlackHoles();
+//                this.drawBlackHoles();
                 this.drawStars();
         }
         
         drawBlackHoles() {
                 const gl = this.gl;
-                
-                var arrayOffset = 0;
-                for (var bh of this.blackHoles) {
-                        this.blackHolePositions[arrayOffset++] = bh.pos[0];
-                        this.blackHolePositions[arrayOffset++] = bh.pos[1];
-                        this.blackHolePositions[arrayOffset++] = bh.pos[2];
-                }
                 
                 gl.useProgram(this.blackHoleShaderProgram.program);
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
@@ -335,6 +325,7 @@ class Universe {
         
         drawStars() {
                 const gl = this.gl;
+                gl.disable(gl.DEPTH_TEST);
                 gl.useProgram(this.starShaderProgram.program);
                 
                 bindTexture(gl, this.starPosTexture0, 0);
@@ -368,6 +359,13 @@ class Universe {
                 
                 for (var bh of this.blackHoles) {
                         vec3.add(bh.pos, bh.pos, bh.vel);
+                }
+                
+                var arrayOffset = 0;
+                for (var bh of this.blackHoles) {
+                        this.blackHolePositions[arrayOffset++] = bh.pos[0];
+                        this.blackHolePositions[arrayOffset++] = bh.pos[1];
+                        this.blackHolePositions[arrayOffset++] = bh.pos[2];
                 }
         }
         
