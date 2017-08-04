@@ -7,8 +7,6 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
-const MOUSE_SENSITIVITY = 800.0;
-
 const BH_VERT = '\
 #version 300 es\n\
 \n\
@@ -162,7 +160,7 @@ class Universe {
                 
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
-                        vec3.fromValues(0.0, 0.0, 500.0 /*TODO*/ * 2.0),
+                        this.camPos,
                         vec3.fromValues(0.0, 0.0, 0.0),
                         vec3.fromValues(0.0, 1.0, 0.0));
                 this.projectionMatrix = mat4.perspective(mat4.create(),
@@ -282,11 +280,10 @@ class Universe {
                         this.starCount + ' stars');
         }
         
-        mouseMoved(x, y) {
-                var camX = (x / this.gl.canvas.width  *  2.0 - 1.0) * MOUSE_SENSITIVITY;
-                var camY = (y / this.gl.canvas.height * -2.0 + 1.0) * MOUSE_SENSITIVITY;
-                this.viewMatrix = mat4.lookAt(mat4.create(),
-                        vec3.fromValues(camX, camY, 500 /*TODO*/ * 2.0),
+        moveCamera(camPos) {
+                this.camPos = vec3.fromValues(camPos[0], camPos[1], camPos[2]);
+                mat4.lookAt(this.viewMatrix,
+                        this.camPos,
                         vec3.fromValues(0.0, 0.0, 0.0),
                         vec3.fromValues(0.0, 1.0, 0.0));
                 this.updateMvpMatrix();

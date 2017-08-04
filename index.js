@@ -1,3 +1,5 @@
+const MOUSE_SENSITIVITY = 800.0;
+
 var canvas = document.getElementById('canvas');
 
 const gl = canvas.getContext('webgl2');
@@ -13,9 +15,14 @@ if (gl) {
         var universe = new Universe(gl);
         canvas.addEventListener('mousemove',
                 function(event) {
-                        universe.mouseMoved(
-                                event.clientX - rect.left,
-                                event.clientY - rect.top);
+                        var camX = ((event.clientX - rect.left) /
+                                canvas.width * 2.0 - 1.0) *
+                                MOUSE_SENSITIVITY;
+                        var camY = ((event.clientY - rect.top) /
+                                canvas.height * -2.0 + 1.0) *
+                                MOUSE_SENSITIVITY;
+                        var camZ = universe.camPos[2];
+                        universe.moveCamera([camX, camY, camZ]);
                 });
         document.addEventListener('keypress',
                 function(event) {
