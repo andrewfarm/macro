@@ -1,12 +1,10 @@
-const MIN_GALAXIES = 2;
-const MAX_GALAXIES = 2;
-const MIN_STARS_IN_GALAXY = 500000;
-const MAX_STARS_IN_GALAXY = 500000;
+const DEFAULT_GALAXIES = 2;
+const DEFAULT_STARS_PER_GALAXY = 500000;
+const DEFAULT_GALAXY_RADIUS = 150.0;
+const DEFAULT_BOUNDS = 500.0;
+const DEFAULT_MAX_SPEED = 2.0;
+const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 
-const INITIAL_BOUNDS = 500.0;
-const INITIAL_SPEED_LIMIT = 2.0;
-
-const UNIVERSE_BOUNDARY = 100000;
 const BLACK_HOLE_GRAVITY = 5000.0;
 
 const MOUSE_SENSITIVITY = 800.0;
@@ -135,28 +133,36 @@ function randFloat(min, max) {
 }
 
 class BlackHole {
-        constructor() {
+        constructor(bounds, maxSpeed) {
                 this.pos = vec3.fromValues(
-                        randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS),
-                        randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS),
-                        randFloat(-INITIAL_BOUNDS, INITIAL_BOUNDS));
+                        randFloat(-bounds, bounds),
+                        randFloat(-bounds, bounds),
+                        randFloat(-bounds, bounds));
                 this.vel = vec3.fromValues(
-                        randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT),
-                        randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT),
-                        randFloat(-INITIAL_SPEED_LIMIT, INITIAL_SPEED_LIMIT));
+                        randFloat(-maxSpeed, maxSpeed),
+                        randFloat(-maxSpeed, maxSpeed),
+                        randFloat(-maxSpeed, maxSpeed));
         }
 }
 
 class Universe {
-        constructor(gl) {
+        constructor(gl, options) {
                 this.gl = gl;
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
-                this.lightMode = false;
+                this.setOption(options, 'lightMode', false, 'boolean');
+                this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
+                this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
+                this.setOption(options, 'galaxyRadius', DEFAULT_GALAXY_RADIUS, 'number');
+                this.setOption(options, 'bounds', DEFAULT_BOUNDS, 'number');
+                this.setOption(options, 'maxSpeed', DEFAULT_MAX_SPEED, 'number');
+                this.setOption(options, 'camPos', DEFAULT_CAM_POS);
+                this.camPos = vec3.fromValues(this.camPos[0], this.camPos[1], this.camPos[2]);
+                this.starCount = this.galaxies * this.starsPerGalaxy;
                 
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewMatrix = mat4.lookAt(mat4.create(),
-                        vec3.fromValues(0.0, 0.0, INITIAL_BOUNDS * 2.0),
+                        vec3.fromValues(0.0, 0.0, 500.0 /*TODO*/ * 2.0),
                         vec3.fromValues(0.0, 0.0, 0.0),
                         vec3.fromValues(0.0, 1.0, 0.0));
                 this.projectionMatrix = mat4.perspective(mat4.create(),
@@ -164,9 +170,6 @@ class Universe {
                 
                 this.mvpMatrix = mat4.create();
                 this.updateMvpMatrix();
-                
-                this.starCount = 0;
-                this.blackHoles = [];
                 this.genesis();
                 
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
@@ -198,15 +201,15 @@ class Universe {
                 gl.bindVertexArray(null);
         }
         
+        setOption(options, property, defaultValue, type) {
+                this[property] = (options &&
+                        ((typeof(type) === 'undefined') ?
+                                (typeof(options[property]) !== 'undefined') :
+                                (typeof(options[property]) === type))) ?
+                                        options[property] : defaultValue;
+        }
+        
         genesis() {
-                //generate galaxy sizes
-                var galaxySizes = [];
-                const galaxyCount = randInt(MIN_GALAXIES, MAX_GALAXIES);
-                for (var i = 0; i < galaxyCount; i++) {
-                        galaxySizes[i] = randInt(MIN_STARS_IN_GALAXY, MAX_STARS_IN_GALAXY);
-                        this.starCount += galaxySizes[i];
-                }
-                
                 //allocate star position and velocity buffers
                 
                 this.starStateTextureRes = Math.ceil(Math.sqrt(this.starCount));
@@ -221,19 +224,18 @@ class Universe {
                 var starVelBuf = new Float32Array(this.starTexelCount * 4);
                 
                 //generate black holes
+                this.blackHoles = [];
                 var arrayOffset = 0;
-                var galaxyRadius;
                 var starDist, starAngle;
                 var starPosX, starPosY, starPosZ;
                 var starSpeed;
                 var starVelX, starVelY, starVelZ;
-                for (var i = 0; i < galaxyCount; i++) {
-                        this.blackHoles[i] = new BlackHole();
+                for (var i = 0; i < this.galaxies; i++) {
+                        this.blackHoles[i] = new BlackHole(this.bounds, this.maxSpeed);
                         
                         //generate stars
-                        galaxyRadius = Math.sqrt(galaxySizes[i] / MIN_STARS_IN_GALAXY) * 150.0;
-                        for (var j = 0; j < galaxySizes[i]; j++) {
-                                starDist = randFloat(0, galaxyRadius);
+                        for (var j = 0; j < this.starsPerGalaxy; j++) {
+                                starDist = randFloat(0, this.galaxyRadius);
                                 starAngle = randFloat(0, 2.0 * Math.PI);
                                 starPosX = starDist * Math.cos(starAngle);
                                 starPosY = starDist * Math.sin(starAngle);
@@ -254,6 +256,8 @@ class Universe {
                                 arrayOffset += 4;
                         }
                 }
+                console.log('starPosBuf', starPosBuf);
+                console.log('this.blackHoles', this.blackHoles);
                 
                 //store star states in textures
                 const gl = this.gl;
@@ -274,7 +278,7 @@ class Universe {
                 }
                 this.starIndexBuffer = createBuffer(gl, starIndices);
                 
-                console.log('created ' + galaxyCount + ' galaxies and ' +
+                console.log('created ' + this.galaxies + ' galaxies and ' +
                         this.starCount + ' stars');
         }
         
@@ -282,7 +286,7 @@ class Universe {
                 var camX = (x / this.gl.canvas.width  *  2.0 - 1.0) * MOUSE_SENSITIVITY;
                 var camY = (y / this.gl.canvas.height * -2.0 + 1.0) * MOUSE_SENSITIVITY;
                 this.viewMatrix = mat4.lookAt(mat4.create(),
-                        vec3.fromValues(camX, camY, INITIAL_BOUNDS * 2.0),
+                        vec3.fromValues(camX, camY, 500 /*TODO*/ * 2.0),
                         vec3.fromValues(0.0, 0.0, 0.0),
                         vec3.fromValues(0.0, 1.0, 0.0));
                 this.updateMvpMatrix();
