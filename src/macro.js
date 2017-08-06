@@ -254,8 +254,6 @@ class Universe {
                                 arrayOffset += 4;
                         }
                 }
-                console.log('starPosBuf', starPosBuf);
-                console.log('this.blackHoles', this.blackHoles);
                 
                 //store star states in textures
                 const gl = this.gl;

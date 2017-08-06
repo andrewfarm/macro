@@ -4,7 +4,6 @@ body {
         overflow: hidden;
         background: #000000;
         font-family: Avenir Next, monospace;
-        text-transform: uppercase;
         color: #ffffff;
         text-shadow:
         0pt 0pt 8pt #66ccff,
@@ -12,32 +11,33 @@ body {
         0pt 0pt 8pt #66ccff;
 }
 
-div {
+.errmsg {
+        text-transform: uppercase;
         width: 60%;
         margin: auto;
         margin-top: 10em;
 }
 
-h1 {
+.errmsg h1 {
         font-weight: normal;
         font-size: 48pt;
 }
 
-h2 {
+.errmsg h2 {
         font-weight: normal;
         font-size: 24pt;
 }
 
-ul {
+.errmsg ul {
         list-style-type: none;
         padding: 0px;
 }
 
-a {
+.errmsg a {
         text-decoration: none;
 }
 
-a:hover {
+.errmsg a:hover {
         text-shadow:
         0pt 0pt 8pt #66ccff,
         0pt 0pt 8pt #66ccff,
@@ -47,17 +47,17 @@ a:hover {
         0pt 0pt 8pt #66ccff;
 }
 
-a:visited {
+.errmsg a:visited {
         color: inherit;
 }
 
-.red {
+.errmsg .red {
         text-shadow:
         0pt 0pt 8pt #ff8080,
         0pt 0pt 8pt #ff8080;
 }
 
-.green {
+.errmsg .green {
         text-shadow:
         0pt 0pt 8pt #66ff66,
         0pt 0pt 8pt #66ff66;

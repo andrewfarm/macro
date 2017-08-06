@@ -13,6 +13,20 @@ if (gl) {
         var rect = canvas.getBoundingClientRect();
         
         var universe = new Universe(gl);
+        var gui = new dat.GUI();
+        gui.add(universe, 'galaxies').min(1).step(1).onFinishChange(reset);
+        gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(reset);
+        gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(reset);
+        gui.add(universe, 'lightMode');
+        var resetter = {reset: reset};
+        var resetControl = gui.add(resetter, 'reset');
+        function reset() {
+                universe = new Universe(gl, universe);
+                for (var ctrl of gui.__controllers) {
+                        if (ctrl != resetControl) ctrl.object = universe;
+                }
+        }
+        
         canvas.addEventListener('mousemove',
                 function(event) {
                         var camX = ((event.clientX - rect.left) /
@@ -26,12 +40,8 @@ if (gl) {
                 });
         document.addEventListener('keypress',
                 function(event) {
-                        if (event.which === 108) { // 'l'
-                                universe.lightMode = !universe.lightMode;
-                        } else if (event.which === 13) { // enter
-                                var temp = universe;
-                                universe = new Universe(gl);
-                                universe.lightMode = temp.lightMode;
+                        if (event.which === 13) { // enter
+                                reset();
                         }
                 });
 
@@ -42,7 +52,7 @@ if (gl) {
         requestAnimationFrame(render);
 } else {
         document.body.innerHTML =
-                '<div>\
+                '<div class="errmsg">\
                         <h1 class="red">Critical Failure</h1>\
                         <p>WebGL 2 missing from browser<p>\
                         <h2 class="green">2 solutions found</h2>\
