@@ -12,6 +12,7 @@ if (gl) {
         canvas.height = window.innerHeight;// * pixelRatio;
         var rect = canvas.getBoundingClientRect();
         
+        var playing;
         var universe = new Universe(gl);
         var gui = new dat.GUI();
         gui.add(universe, 'galaxies').min(1).step(1).onFinishChange(reset);
@@ -42,13 +43,19 @@ if (gl) {
                 function(event) {
                         if (event.which === 13) { // enter
                                 reset();
+                        } else if (event.which == 32) { // space
+                                playing = !playing;
                         }
                 });
 
         function render() {
-                universe.nextFrame();
+                universe.drawFrame();
+                if (playing) {
+                        universe.update();
+                }
                 requestAnimationFrame(render);
         }
+        playing = true;
         requestAnimationFrame(render);
 } else {
         document.body.innerHTML =

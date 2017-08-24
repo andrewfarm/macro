@@ -292,11 +292,9 @@ class Universe {
                 mat4.multiply(this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
         }
         
-        nextFrame() {
+        drawFrame() {
                 this.updateBlackHolePosBuffer();
                 this.draw();
-                this.update();
-                this.swapStarStateBuffers();
         }
         
         draw() {
@@ -396,6 +394,8 @@ class Universe {
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.bindVertexArray(null);
+                
+                this.swapStarStateBuffers();
         }
         
         swapStarStateBuffers() {
