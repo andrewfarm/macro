@@ -321,7 +321,6 @@ class Universe {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
                 gl.readPixels(0, 0, this.starStateTextureRes, this.starStateTextureRes,
                         gl.RGBA, gl.FLOAT, starPosBuf);
-                console.log('starPosBuf', starPosBuf);
                 
                 var layerStarIndices = [];
                 for (var i = 0; i < numLayers; i++) {
@@ -331,7 +330,6 @@ class Universe {
                 var starPosIndex;
                 var starPos;
                 var layer;
-                console.log('bounds', this.bounds);
                 for (var i = 0; i < this.starCount; i++) {
                         layer = Math.min(Math.max(Math.floor(
                                 (starPosBuf[i * 4 + 2] + this.bounds) / (2 * this.bounds) * numLayers),
@@ -346,15 +344,12 @@ class Universe {
                 var context = canvas.getContext('2d');
                 var layerImages = [];
                 for (var i = 0; i < numLayers; i++) {
-                        console.log(layerStarIndices[i].length);
                         var layerTexture = createEmptyTexture(gl, gl.NEAREST, gl.RGBA8,
                                 gl.canvas.width, gl.canvas.height);
                         
                         gl.bindFramebuffer(gl.FRAMEBUFFER, layerFramebuffer);
                         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
                                 gl.TEXTURE_2D, layerTexture, 0);
-                        gl.drawBuffers([gl.COLOR_ATTACHMENT0]); //TODO can do without?
-                        gl.readBuffer(gl.COLOR_ATTACHMENT0); //TODO can do without?
                         
                         var layerStarIndexBuf = createBuffer(
                                 gl, Float32Array.from(layerStarIndices[i]));
