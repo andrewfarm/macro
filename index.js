@@ -12,6 +12,7 @@ if (gl) {
         canvas.height = window.innerHeight;// * pixelRatio;
         var rect = canvas.getBoundingClientRect();
         
+        var shouldContinue = true;
         var playing;
         var universe = new Universe(gl);
         var gui = new dat.GUI();
@@ -28,9 +29,16 @@ if (gl) {
                 }
         }
         
-        function captureLayers() {
-                var layerImages = universe.drawLayers(10);
-                console.log('layerImages', layerImages);
+        function captureLayers(numLayers) {
+                var layerImages = universe.drawLayers(numLayers);
+//                console.log('layerImages', layerImages);
+                playing = false;
+                var newWindow = window.open();
+                newWindow.document.body.style.margin = '0';
+                for (var i = 0; i < numLayers; i++) {
+                        layerImages[i].style.border = '5px solid #ff00ff';
+                        newWindow.document.body.appendChild(layerImages[i]);
+                }
         }
         
         canvas.addEventListener('mousemove',
@@ -52,7 +60,7 @@ if (gl) {
                         } else if (event.which == 32) { // space
                                 playing = !playing;
                         } else if (event.which == 96) { // tilde
-                                captureLayers();
+                                captureLayers(32);
                         }
                 });
 
@@ -61,7 +69,9 @@ if (gl) {
                 if (playing) {
                         universe.update();
                 }
-                requestAnimationFrame(render);
+                if (shouldContinue) {
+                        requestAnimationFrame(render);
+                }
         }
         playing = true;
         requestAnimationFrame(render);

@@ -311,7 +311,7 @@ class Universe {
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
                 this.lightMode ?
                         gl.clearColor(1, 1, 1, 1) :
-                        gl.clearColor(0, 0, 0, 0);
+                        gl.clearColor(0, 0, 0, 1);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         }
         
@@ -321,6 +321,7 @@ class Universe {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
                 gl.readPixels(0, 0, this.starStateTextureRes, this.starStateTextureRes,
                         gl.RGBA, gl.FLOAT, starPosBuf);
+                console.log('starPosBuf', starPosBuf);
                 
                 var layerStarIndices = [];
                 for (var i = 0; i < numLayers; i++) {
@@ -330,9 +331,10 @@ class Universe {
                 var starPosIndex;
                 var starPos;
                 var layer;
+                console.log('bounds', this.bounds);
                 for (var i = 0; i < this.starCount; i++) {
                         layer = Math.min(Math.max(Math.floor(
-                                (starPosBuf[i * 3] + this.bounds) / (2 * this.bounds)),
+                                (starPosBuf[i * 4 + 2] + this.bounds) / (2 * this.bounds) * numLayers),
                                 0), numLayers - 1);
                         layerStarIndices[layer].push(i);
                 }
@@ -344,7 +346,8 @@ class Universe {
                 var context = canvas.getContext('2d');
                 var layerImages = [];
                 for (var i = 0; i < numLayers; i++) {
-                        var layerTexture = createEmptyTexture(gl, gl.NEAREST, gl.RGB8,
+                        console.log(layerStarIndices[i].length);
+                        var layerTexture = createEmptyTexture(gl, gl.NEAREST, gl.RGBA8,
                                 gl.canvas.width, gl.canvas.height);
                         
                         gl.bindFramebuffer(gl.FRAMEBUFFER, layerFramebuffer);
@@ -357,13 +360,11 @@ class Universe {
                                 gl, Float32Array.from(layerStarIndices[i]));
                         
                         this.readyDraw(layerFramebuffer);
-                        console.log('layerStarIndexBuf', layerStarIndexBuf);
-                        console.log('layerStarIndices[i].length', layerStarIndices[i].length);
                         this.drawStars(layerStarIndexBuf, layerStarIndices[i].length);
                         
                         var layerPixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
                         gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height,
-                                gl.RGB, gl.UNSIGNED_BYTE, layerPixels);
+                                gl.RGBA, gl.UNSIGNED_BYTE, layerPixels);
                         
                         var imageData = context.createImageData(
                                 gl.canvas.width, gl.canvas.height);
