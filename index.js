@@ -28,6 +28,11 @@ if (gl) {
                 }
         }
         
+        function captureLayers() {
+                var layerImages = universe.drawLayers(10);
+                console.log('layerImages', layerImages);
+        }
+        
         canvas.addEventListener('mousemove',
                 function(event) {
                         var camX = ((event.clientX - rect.left) /
@@ -41,10 +46,13 @@ if (gl) {
                 });
         document.addEventListener('keypress',
                 function(event) {
+//                        console.log('event.which', event.which);
                         if (event.which === 13) { // enter
                                 reset();
                         } else if (event.which == 32) { // space
                                 playing = !playing;
+                        } else if (event.which == 96) { // tilde
+                                captureLayers();
                         }
                 });
 

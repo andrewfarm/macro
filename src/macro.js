@@ -294,12 +294,12 @@ class Universe {
         }
         
         draw() {
-                this.readyDraw();
+                this.readyDraw(null);
 //                this.drawBlackHoles();
-                this.drawStars(this.starIndexBuffer);
+                this.drawStars(this.starIndexBuffer, this.starCount);
         }
         
-        readyDraw() {
+        readyDraw(framebuffer) {
                 const gl = this.gl;
                 gl.enable(gl.BLEND);
                 this.lightMode ?
@@ -307,7 +307,7 @@ class Universe {
                         gl.blendFunc(gl.ONE, gl.ONE);
                 gl.disable(gl.STENCIL_TEST);
                 
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
                 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
                 this.lightMode ?
                         gl.clearColor(1, 1, 1, 1) :
@@ -315,9 +315,8 @@ class Universe {
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         }
         
-        drawLayers() {
-                var numLayers = canvas2DContexts.length;
-                
+        drawLayers(numLayers) {
+                const gl = this.gl;
                 var starPosBuf = new Float32Array(this.starTexelCount * 4);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
                 gl.readPixels(0, 0, this.starStateTextureRes, this.starStateTextureRes,
@@ -332,33 +331,37 @@ class Universe {
                 var starPos;
                 var layer;
                 for (var i = 0; i < this.starCount; i++) {
-                        layer = floor((starPosBuf(i * 3 + 2) + this.bounds) / (2 * this.bounds));
+                        layer = Math.min(Math.max(Math.floor(
+                                (starPosBuf[i * 3] + this.bounds) / (2 * this.bounds)),
+                                0), numLayers - 1);
                         layerStarIndices[layer].push(i);
                 }
                 
-                const gl = this.gl;
                 var layerFramebuffer = gl.createFramebuffer();
-                gl.bindFramebuffer(layerFramebuffer);
                 var canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
+                canvas.width = gl.canvas.width;
+                canvas.height = gl.canvas.height;
                 var context = canvas.getContext('2d');
                 var layerImages = [];
                 for (var i = 0; i < numLayers; i++) {
-                        var layerStarIndexBuf = Float32Array.from(layerStarIndices[i]);
-                        
-                        var layerTexture = createEmptyTexture(gl, gl.NEAREST, gl.RGBA32F,
+                        var layerTexture = createEmptyTexture(gl, gl.NEAREST, gl.RGB8,
                                 gl.canvas.width, gl.canvas.height);
                         
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, layerFramebuffer);
                         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
                                 gl.TEXTURE_2D, layerTexture, 0);
                         gl.drawBuffers([gl.COLOR_ATTACHMENT0]); //TODO can do without?
                         gl.readBuffer(gl.COLOR_ATTACHMENT0); //TODO can do without?
                         
-                        this.readyDraw();
-                        this.drawStars(layerStarIndexBuf);
+                        var layerStarIndexBuf = createBuffer(
+                                gl, Float32Array.from(layerStarIndices[i]));
                         
-                        var layerPixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 3);
+                        this.readyDraw(layerFramebuffer);
+                        console.log('layerStarIndexBuf', layerStarIndexBuf);
+                        console.log('layerStarIndices[i].length', layerStarIndices[i].length);
+                        this.drawStars(layerStarIndexBuf, layerStarIndices[i].length);
+                        
+                        var layerPixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
                         gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height,
                                 gl.RGB, gl.UNSIGNED_BYTE, layerPixels);
                         
@@ -370,8 +373,13 @@ class Universe {
                         var img = new Image();
                         img.src = canvas.toDataURL();
                         layerImages[i] = img;
+                        
+                        gl.deleteTexture(layerTexture);
+                        gl.deleteBuffer(layerStarIndexBuf);
                 }
                 gl.deleteFramebuffer(layerFramebuffer);
+                
+                return layerImages;
         }
         
         drawBlackHoles() {
@@ -386,7 +394,7 @@ class Universe {
                 gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
         }
         
-        drawStars(starIndexBuf) {
+        drawStars(starIndexBuf, numStars) {
                 const gl = this.gl;
                 gl.disable(gl.DEPTH_TEST);
                 gl.useProgram(this.starShaderProgram.program);
@@ -400,7 +408,7 @@ class Universe {
                         this.lightMode ? [0, 0, 0, 0.02] : [0.02, 0.02, 0.02, 1]);
                 
                 bindAttribute(gl, starIndexBuf, this.starShaderProgram.a_index, 1);
-                gl.drawArrays(gl.POINTS, 0, this.starCount);
+                gl.drawArrays(gl.POINTS, 0, numStars);
         }
         
         update() {
