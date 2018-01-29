@@ -9,6 +9,18 @@ const BLACK_HOLE_GRAVITY = 5000.0;
 
 const STAR_INTENSITY = 0.05;
 
+const STAR_POS_TEXTURE_UNIT = 0;
+const STAR_VEL_TEXTURE_UNIT = 1;
+const STAR_2D_POS_TEXTURE_UNIT = 2;
+const GALAXY_TEXTURE_UNIT = 3;
+
+const GALAXY_TEXTURE_URLS = [
+        'res/spiral-galaxy.jpg',
+        'res/index_galaxy_body.png',
+        'res/space-spiral-galaxy-messier-101.png',
+        'res/gradient-galaxy-low.png'
+];
+
 const BH_VERT = '\
 #version 300 es\n\
 \n\
@@ -41,21 +53,25 @@ precision mediump float;\n\
 \n\
 uniform mat4 u_mvp_matrix;\n\
 uniform sampler2D u_star_pos;\n\
+uniform sampler2D u_star_2D_pos;\n\
+uniform sampler2D u_galaxy_texture;\n\
 uniform float u_star_res;\n\
 \n\
 in float a_index;\n\
 \n\
-vec4 getTexelColor(float index) {\n\
-        return texture(u_star_pos, vec2(\n\
+out vec4 v_color;\n\
+\n\
+vec4 getTexelColor(sampler2D sampler, float index) {\n\
+        return texture(sampler, vec2(\n\
                 fract(index / u_star_res),\n\
                 floor(index / u_star_res) / u_star_res));\n\
 }\n\
 \n\
 void main() {\n\
-        vec4 posColor = texture(u_star_pos, vec2(\n\
-                fract(a_index / u_star_res),\n\
-                floor(a_index / u_star_res) / u_star_res));\n\
-        gl_Position = u_mvp_matrix * vec4(posColor.xyz, 1.0);\n\
+        vec4 star2DPos = getTexelColor(u_star_2D_pos, a_index);\n\
+        v_color = texture(u_galaxy_texture, star2DPos.xy);\n\
+        vec4 starPos = getTexelColor(u_star_pos, a_index);\n\
+        gl_Position = u_mvp_matrix * vec4(starPos.xyz, 1.0);\n\
         gl_PointSize = 1000.0 / gl_Position.z;\n\
 }\n\
 ';
@@ -65,12 +81,14 @@ const STAR_FRAG = '\
 \n\
 precision mediump float;\n\
 \n\
-uniform vec4 u_color;\n\
+uniform float u_intensity;\n\
+\n\
+in vec4 v_color;\n\
 \n\
 out vec4 fragColor;\n\
 \n\
 void main() {\n\
-        fragColor = u_color;\n\
+        fragColor = v_color * u_intensity;\n\
 }\n\
 ';
 
@@ -172,6 +190,19 @@ class Universe {
                 this.updateMvpMatrix();
                 this.genesis();
                 
+                const pixel = new Uint8Array([255, 255, 255, 255]);
+                var galaxyTexture = createTexture(gl, gl.NEAREST, pixel, 1, 1);
+                const galaxyImage = new Image();
+                galaxyImage.onload = function() {
+                        gl.bindTexture(gl.TEXTURE_2D, galaxyTexture);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, galaxyImage);
+                        gl.bindTexture(gl.TEXTURE_2D, null);
+                        console.log('galaxy texture loaded (' +
+                                galaxyImage.width + 'x' + galaxyImage.height + ')');
+                };
+                this.galaxyTexture = galaxyTexture;
+                galaxyImage.src = GALAXY_TEXTURE_URLS[Math.floor(Math.random() * GALAXY_TEXTURE_URLS.length)];
+                
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
                 this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
                 this.starUpdateShaderProgram = createProgram(gl, QUAD_VERT,
@@ -215,13 +246,14 @@ class Universe {
                         this.starStateTextureRes + ' texture for ' +
                         this.starCount + ' stars (' + this.starTexelCount +
                         ' texels)');
-                var starPosBuf = new Float32Array(this.starTexelCount * 4);
-                var starVelBuf = new Float32Array(this.starTexelCount * 4);
+                const starPosBuf = new Float32Array(this.starTexelCount * 4);
+                const starVelBuf = new Float32Array(this.starTexelCount * 4);
+                const star2DPosBuf = new Float32Array(this.starTexelCount * 4);
                 
                 //generate black holes
                 this.blackHoles = [];
                 var arrayOffset = 0;
-                var starDist, starAngle;
+                var starDistFraction, starDist, starAngle;
                 var starPos = vec4.create();
                 var starSpeed;
                 var starVel = vec4.create();
@@ -232,19 +264,20 @@ class Universe {
                         //randomize galaxy orientation
                         mat4.identity(galaxyRotationMatrix);
                         mat4.rotateX(galaxyRotationMatrix, galaxyRotationMatrix,
-                                Math.random() * 2 * Math.PI);
+                                randFloat(0, 2.0 * Math.PI));
                         mat4.rotateY(galaxyRotationMatrix, galaxyRotationMatrix,
-                                     Math.random() * 2 * Math.PI);
+                                randFloat(0, 2.0 * Math.PI));
                         mat4.rotateZ(galaxyRotationMatrix, galaxyRotationMatrix,
-                                     Math.random() * 2 * Math.PI);
+                                randFloat(0, 2.0 * Math.PI));
                         
                         //generate stars
                         for (var j = 0; j < this.starsPerGalaxy; j++) {
-                                starDist = randFloat(0, this.galaxyRadius);
+                                starDistFraction = randFloat(0, 1.0);
+                                starDist = starDistFraction * this.galaxyRadius;
                                 starAngle = randFloat(0, 2.0 * Math.PI);
                                 vec4.set(starPos,
-                                        starDist * Math.cos(starAngle),
-                                        starPos.y = starDist * Math.sin(starAngle),
+                                        starDistFraction * Math.cos(starAngle),
+                                        starDistFraction * Math.sin(starAngle),
                                         0.0,
                                         0.0);
                                 starSpeed = Math.sqrt(BLACK_HOLE_GRAVITY / starDist);
@@ -253,6 +286,11 @@ class Universe {
                                         starSpeed *  Math.cos(starAngle),
                                         0.0,
                                         0.0);
+                                
+                                star2DPosBuf[arrayOffset]     = (starPos[0] + 1.0) / 2;
+                                star2DPosBuf[arrayOffset + 1] = (starPos[1] + 1.0) / 2;
+                                
+                                vec4.scale(starPos, starPos, this.galaxyRadius);
                                 
                                 vec4.transformMat4(starPos, starPos, galaxyRotationMatrix);
                                 vec4.transformMat4(starVel, starVel, galaxyRotationMatrix);
@@ -281,6 +319,9 @@ class Universe {
                 this.starVelTexture1 = createEmptyTexture(gl, gl.NEAREST, gl.RGBA32F,
                         this.starStateTextureRes, this.starStateTextureRes,
                         gl.RGBA32F);
+                //store 2D initial positions of stars (for texturing) in texture
+                this.star2DPosTexture = createTexture(gl, gl.NEAREST, star2DPosBuf,
+                        this.starStateTextureRes, this.starStateTextureRes);
                 
                 //store star indices in buffer
                 var starIndices = new Float32Array(this.starCount);
@@ -414,14 +455,19 @@ class Universe {
                 gl.disable(gl.DEPTH_TEST);
                 gl.useProgram(this.starShaderProgram.program);
                 
-                bindTexture(gl, this.starPosTexture0, 0);
+                bindTexture(gl, this.starPosTexture0, STAR_POS_TEXTURE_UNIT);
                 gl.uniformMatrix4fv(this.starShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
-                gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
+                gl.uniform1i(this.starShaderProgram.u_star_pos, STAR_POS_TEXTURE_UNIT);
                 gl.uniform1f(this.starShaderProgram.u_star_res, this.starStateTextureRes);
-                gl.uniform4fv(this.starShaderProgram.u_color,
-                        this.lightMode ? [0, 0, 0, STAR_INTENSITY] :
-                              [STAR_INTENSITY, STAR_INTENSITY, STAR_INTENSITY, 1]);
+//                gl.uniform4fv(this.starShaderProgram.u_color,
+//                        this.lightMode ? [0, 0, 0, STAR_INTENSITY] :
+//                              [STAR_INTENSITY, STAR_INTENSITY, STAR_INTENSITY, 1]);
+                bindTexture(gl, this.star2DPosTexture, STAR_2D_POS_TEXTURE_UNIT);
+                gl.uniform1i(this.starShaderProgram.u_star_2D_pos, STAR_2D_POS_TEXTURE_UNIT);
+                bindTexture(gl, this.galaxyTexture, GALAXY_TEXTURE_UNIT);
+                gl.uniform1i(this.starShaderProgram.u_galaxy_texture, GALAXY_TEXTURE_UNIT);
+                gl.uniform1f(this.starShaderProgram.u_intensity, STAR_INTENSITY);
                 
                 bindAttribute(gl, starIndexBuf, this.starShaderProgram.a_index, 1);
                 gl.drawArrays(gl.POINTS, 0, numStars);
@@ -463,11 +509,11 @@ class Universe {
                 gl.viewport(0, 0, this.starStateTextureRes, this.starStateTextureRes);
                 gl.useProgram(this.starUpdateShaderProgram.program);
                 
-                bindTexture(gl, this.starPosTexture0, 0);
-                bindTexture(gl, this.starVelTexture0, 1);
+                bindTexture(gl, this.starPosTexture0, STAR_POS_TEXTURE_UNIT);
+                bindTexture(gl, this.starVelTexture0, STAR_VEL_TEXTURE_UNIT);
                 gl.uniform1f(this.starUpdateShaderProgram.u_bh_gravity, BLACK_HOLE_GRAVITY);
-                gl.uniform1i(this.starUpdateShaderProgram.u_star_pos, 0);
-                gl.uniform1i(this.starUpdateShaderProgram.u_star_vel, 1);
+                gl.uniform1i(this.starUpdateShaderProgram.u_star_pos, STAR_POS_TEXTURE_UNIT);
+                gl.uniform1i(this.starUpdateShaderProgram.u_star_vel, STAR_VEL_TEXTURE_UNIT);
                 gl.uniform3fv(this.starUpdateShaderProgram.u_bh_pos, this.blackHolePositions);
                 
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
@@ -588,6 +634,7 @@ function createProgram(gl, vertexSource, fragmentSource) {
         return wrapper;
 }
 
+//This function has been modified from its original form.
 function createTexture(gl, filter, data, width, height) {
         var texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -602,7 +649,7 @@ function createTexture(gl, filter, data, width, height) {
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
                 console.log('created Float32 texture');
         } else {
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
         }
         gl.bindTexture(gl.TEXTURE_2D, null);
         return texture;
