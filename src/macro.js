@@ -7,7 +7,7 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
-const STAR_INTENSITY = 0.02;
+const STAR_INTENSITY = 0.05;
 
 const BH_VERT = '\
 #version 300 es\n\
@@ -222,31 +222,48 @@ class Universe {
                 this.blackHoles = [];
                 var arrayOffset = 0;
                 var starDist, starAngle;
-                var starPosX, starPosY, starPosZ;
+                var starPos = vec4.create();
                 var starSpeed;
-                var starVelX, starVelY, starVelZ;
+                var starVel = vec4.create();
+                var galaxyRotationMatrix = mat4.create();
                 for (var i = 0; i < this.galaxies; i++) {
                         this.blackHoles[i] = new BlackHole(this.bounds, this.maxSpeed);
+                        
+                        //randomize galaxy orientation
+                        mat4.identity(galaxyRotationMatrix);
+                        mat4.rotateX(galaxyRotationMatrix, galaxyRotationMatrix,
+                                Math.random() * 2 * Math.PI);
+                        mat4.rotateY(galaxyRotationMatrix, galaxyRotationMatrix,
+                                     Math.random() * 2 * Math.PI);
+                        mat4.rotateZ(galaxyRotationMatrix, galaxyRotationMatrix,
+                                     Math.random() * 2 * Math.PI);
                         
                         //generate stars
                         for (var j = 0; j < this.starsPerGalaxy; j++) {
                                 starDist = randFloat(0, this.galaxyRadius);
                                 starAngle = randFloat(0, 2.0 * Math.PI);
-                                starPosX = starDist * Math.cos(starAngle);
-                                starPosY = starDist * Math.sin(starAngle);
-                                starPosZ = 0.0;
+                                vec4.set(starPos,
+                                        starDist * Math.cos(starAngle),
+                                        starPos.y = starDist * Math.sin(starAngle),
+                                        0.0,
+                                        0.0);
                                 starSpeed = Math.sqrt(BLACK_HOLE_GRAVITY / starDist);
-                                starVelX = starSpeed * -Math.sin(starAngle);
-                                starVelY = starSpeed *  Math.cos(starAngle);
-                                starVelZ = 0.0;
+                                vec4.set(starVel,
+                                        starSpeed * -Math.sin(starAngle),
+                                        starSpeed *  Math.cos(starAngle),
+                                        0.0,
+                                        0.0);
                                 
-                                starPosBuf[arrayOffset]     = this.blackHoles[i].pos[0] + starPosX;
-                                starPosBuf[arrayOffset + 1] = this.blackHoles[i].pos[1] + starPosY;
-                                starPosBuf[arrayOffset + 2] = this.blackHoles[i].pos[2] + starPosZ;
+                                vec4.transformMat4(starPos, starPos, galaxyRotationMatrix);
+                                vec4.transformMat4(starVel, starVel, galaxyRotationMatrix);
                                 
-                                starVelBuf[arrayOffset]     = this.blackHoles[i].vel[0] + starVelX;
-                                starVelBuf[arrayOffset + 1] = this.blackHoles[i].vel[1] + starVelY;
-                                starVelBuf[arrayOffset + 2] = this.blackHoles[i].vel[2] + starVelZ;
+                                starPosBuf[arrayOffset]     = this.blackHoles[i].pos[0] + starPos[0];
+                                starPosBuf[arrayOffset + 1] = this.blackHoles[i].pos[1] + starPos[1];
+                                starPosBuf[arrayOffset + 2] = this.blackHoles[i].pos[2] + starPos[2];
+                                
+                                starVelBuf[arrayOffset]     = this.blackHoles[i].vel[0] + starVel[0];
+                                starVelBuf[arrayOffset + 1] = this.blackHoles[i].vel[1] + starVel[1];
+                                starVelBuf[arrayOffset + 2] = this.blackHoles[i].vel[2] + starVel[2];
                                 
                                 arrayOffset += 4;
                         }
