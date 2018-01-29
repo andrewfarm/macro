@@ -7,6 +7,8 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
+const STAR_INTENSITY = 0.02;
+
 const BH_VERT = '\
 #version 300 es\n\
 \n\
@@ -401,7 +403,8 @@ class Universe {
                 gl.uniform1i(this.starShaderProgram.u_star_pos, 0);
                 gl.uniform1f(this.starShaderProgram.u_star_res, this.starStateTextureRes);
                 gl.uniform4fv(this.starShaderProgram.u_color,
-                        this.lightMode ? [0, 0, 0, 0.02] : [0.02, 0.02, 0.02, 1]);
+                        this.lightMode ? [0, 0, 0, STAR_INTENSITY] :
+                              [STAR_INTENSITY, STAR_INTENSITY, STAR_INTENSITY, 1]);
                 
                 bindAttribute(gl, starIndexBuf, this.starShaderProgram.a_index, 1);
                 gl.drawArrays(gl.POINTS, 0, numStars);
