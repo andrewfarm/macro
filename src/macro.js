@@ -8,6 +8,7 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 const BLACK_HOLE_GRAVITY = 5000.0;
 
 const STAR_INTENSITY = 0.05;
+//const STAR_INTENSITY = 1; //experimental
 
 const STAR_POS_TEXTURE_UNIT = 0;
 const STAR_VEL_TEXTURE_UNIT = 1;
@@ -16,7 +17,6 @@ const GALAXY_TEXTURE_UNIT = 3;
 
 const GALAXY_TEXTURE_URLS = [
         'res/spiral-galaxy.jpg',
-        'res/index_galaxy_body.png',
         'res/space-spiral-galaxy-messier-101.png',
         'res/gradient-galaxy-low.png'
 ];
@@ -70,6 +70,7 @@ vec4 getTexelColor(sampler2D sampler, float index) {\n\
 void main() {\n\
         vec4 star2DPos = getTexelColor(u_star_2D_pos, a_index);\n\
         v_color = texture(u_galaxy_texture, star2DPos.xy);\n\
+//        v_color = vec4(star2DPos.x, star2DPos.y, 0.0, 1.0); //experimental\n\
         vec4 starPos = getTexelColor(u_star_pos, a_index);\n\
         gl_Position = u_mvp_matrix * vec4(starPos.xyz, 1.0);\n\
         gl_PointSize = 1000.0 / gl_Position.z;\n\
@@ -272,7 +273,7 @@ class Universe {
                         
                         //generate stars
                         for (var j = 0; j < this.starsPerGalaxy; j++) {
-                                starDistFraction = randFloat(0, 1.0);
+                                starDistFraction = randFloat(0.15, 1.0);
                                 starDist = starDistFraction * this.galaxyRadius;
                                 starAngle = randFloat(0, 2.0 * Math.PI);
                                 vec4.set(starPos,
@@ -362,6 +363,10 @@ class Universe {
         readyDraw(framebuffer) {
                 const gl = this.gl;
                 gl.enable(gl.BLEND);
+//                gl.disable(gl.BLEND); //experimental
+//                gl.enable(gl.DEPTH_TEST); //experimental
+//                gl.depthFunc(gl.LESS); //experimental
+//                gl.clear(gl.DEPTH_BUFFER_BIT); //experimental
                 this.lightMode ?
                         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA) :
                         gl.blendFunc(gl.ONE, gl.ONE);
@@ -372,7 +377,7 @@ class Universe {
                 this.lightMode ?
                         gl.clearColor(1, 1, 1, 1) :
                         gl.clearColor(0, 0, 0, 1);
-                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                gl.clear(gl.COLOR_BUFFER_BIT);
         }
         
         drawLayers(numLayers) {
@@ -453,6 +458,7 @@ class Universe {
         drawStars(starIndexBuf, numStars) {
                 const gl = this.gl;
                 gl.disable(gl.DEPTH_TEST);
+//                gl.enable(gl.DEPTH_TEST); //experimental
                 gl.useProgram(this.starShaderProgram.program);
                 
                 bindTexture(gl, this.starPosTexture0, STAR_POS_TEXTURE_UNIT);
