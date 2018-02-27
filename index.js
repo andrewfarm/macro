@@ -20,6 +20,7 @@ if (gl) {
         gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(reset);
         gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(reset);
         gui.add(universe, 'lightMode');
+        gui.add(universe, 'bhVisible');
         var resetter = {reset: reset};
         var resetControl = gui.add(resetter, 'reset');
         function reset() {

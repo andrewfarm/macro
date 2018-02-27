@@ -170,6 +170,7 @@ class Universe {
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
                 this.setOption(options, 'lightMode', false, 'boolean');
+                this.setOption(options, 'bhVisible', false, 'boolean');
                 this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
                 this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
                 this.setOption(options, 'galaxyRadius', DEFAULT_GALAXY_RADIUS, 'number');
@@ -350,13 +351,17 @@ class Universe {
         }
         
         drawFrame() {
-//                this.updateBlackHolePosBuffer();
+                if (this.bhVisible) {
+                        this.updateBlackHolePosBuffer();
+                }
                 this.draw();
         }
         
         draw() {
                 this.readyDraw(null);
-//                this.drawBlackHoles();
+                if (this.bhVisible) {
+                        this.drawBlackHoles();
+                }
                 this.drawStars(this.starIndexBuffer, this.starCount);
         }
         
