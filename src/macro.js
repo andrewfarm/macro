@@ -14,12 +14,14 @@ const STAR_POS_TEXTURE_UNIT = 0;
 const STAR_VEL_TEXTURE_UNIT = 1;
 const STAR_2D_POS_TEXTURE_UNIT = 2;
 const GALAXY_TEXTURE_UNIT = 3;
+const BH_TEXTURE_UNIT = 4;
 
 const GALAXY_TEXTURE_URLS = [
         'res/spiral-galaxy.jpg',
         'res/space-spiral-galaxy-messier-101.png',
         'res/gradient-galaxy-low.png'
 ];
+const BH_TEXTURE_URL = 'res/bh.jpg';
 
 const BH_VERT = '\
 #version 300 es\n\
@@ -30,7 +32,7 @@ in vec3 a_pos;\n\
 \n\
 void main() {\n\
         gl_Position = u_mvp_matrix * vec4(a_pos, 1.0);\n\
-        gl_PointSize = 10000.0 / gl_Position.z;\n\
+        gl_PointSize = 50000.0 / gl_Position.z;\n\
 }\n\
 ';
 
@@ -39,10 +41,18 @@ const BH_FRAG = '\
 \n\
 precision mediump float;\n\
 \n\
+uniform int u_frame;\n\
+uniform sampler2D u_bh_texture;\n\
+\n\
 out vec4 fragColor;\n\
 \n\
+\n\
 void main() {\n\
-        fragColor = vec4(1.0, 0.0, 1.0, 1.0);\n\
+//        fragColor = vec4(1.0, 0.0, 1.0, 1.0);\n\
+        vec2 frameCoord = vec2(float(u_frame % 8), float(u_frame / 8)) / 8.0;\n\
+        fragColor = texture(u_bh_texture,\n\
+                frameCoord + (gl_PointCoord / 8.0));\n\
+        fragColor *= (1.0 - floor(length(gl_PointCoord * 2.0 - vec2(1.0, 1.0))));\n\
 }\n\
 ';
 
@@ -170,7 +180,7 @@ class Universe {
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
                 this.setOption(options, 'lightMode', false, 'boolean');
-                this.setOption(options, 'bhVisible', false, 'boolean');
+                this.setOption(options, 'bhVisible', true, 'boolean');
                 this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
                 this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
                 this.setOption(options, 'galaxyRadius', DEFAULT_GALAXY_RADIUS, 'number');
@@ -192,8 +202,9 @@ class Universe {
                 this.updateMvpMatrix();
                 this.genesis();
                 
-                const pixel = new Uint8Array([255, 255, 255, 255]);
-                var galaxyTexture = createTexture(gl, gl.NEAREST, pixel, 1, 1);
+                // load galaxy texture
+                var galaxyTexture = createTexture(gl, gl.NEAREST,
+                        new Uint8Array([255, 255, 255, 255]), 1, 1);
                 const galaxyImage = new Image();
                 galaxyImage.onload = function() {
                         gl.bindTexture(gl.TEXTURE_2D, galaxyTexture);
@@ -204,6 +215,21 @@ class Universe {
                 };
                 this.galaxyTexture = galaxyTexture;
                 galaxyImage.src = GALAXY_TEXTURE_URLS[Math.floor(Math.random() * GALAXY_TEXTURE_URLS.length)];
+                
+                // load black hole texture
+                var bhTexture = createTexture(gl, gl.LINEAR,
+                        new Uint8Array([0, 0, 0, 255]), 1, 1);
+                const bhImage = new Image();
+                bhImage.onload = function() {
+                        gl.bindTexture(gl.TEXTURE_2D, bhTexture);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bhImage);
+                        gl.bindTexture(gl.TEXTURE_2D, null);
+                        console.log('black hole texture loaded (' +
+                                    bhImage.width + 'x' + bhImage.height + ')');
+                };
+                this.bhTexture = bhTexture;
+                bhImage.src = BH_TEXTURE_URL;
+                this.bhAnimStart = Date.now();
                 
                 this.blackHoleShaderProgram = createProgram(gl, BH_VERT, BH_FRAG);
                 this.starShaderProgram = createProgram(gl, STAR_VERT, STAR_FRAG);
@@ -454,6 +480,10 @@ class Universe {
                 gl.useProgram(this.blackHoleShaderProgram.program);
                 gl.uniformMatrix4fv(this.blackHoleShaderProgram.u_mvp_matrix,
                         false, this.mvpMatrix);
+                gl.uniform1i(this.blackHoleShaderProgram.u_frame,
+                        Math.floor((Date.now() - this.bhAnimStart) / 20) % 60);
+                bindTexture(gl, this.bhTexture, BH_TEXTURE_UNIT);
+                gl.uniform1i(this.blackHoleShaderProgram.u_bh_texture, BH_TEXTURE_UNIT);
                 
                 bindAttribute(gl, this.blackHolePosBuffer,
                         this.blackHoleShaderProgram.a_pos, 3);
