@@ -2,6 +2,12 @@ const MOUSE_SENSITIVITY = 800.0;
 
 var canvas = document.getElementById('canvas');
 
+var options = {
+    autoReset: false,
+    resetInterval: 15
+};
+var autoResetTimer;
+
 const gl = canvas.getContext('webgl2');
 if (gl) {
         //const pixelRatio = window.devicePixelRatio || 1;
@@ -21,6 +27,14 @@ if (gl) {
         gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(reset);
         gui.add(universe, 'lightMode');
         gui.add(universe, 'bhVisible');
+        function restartAutoReset() {
+                clearTimeout(autoResetTimer);
+                if (options.autoReset) {
+                        startAutoReset();
+                }
+        }
+        gui.add(options, 'autoReset').onFinishChange(restartAutoReset);
+        gui.add(options, 'resetInterval', 5, 30).onFinishChange(restartAutoReset);
         var resetter = {reset: reset};
         var resetControl = gui.add(resetter, 'reset');
         function reset() {
@@ -28,6 +42,17 @@ if (gl) {
                 for (var ctrl of gui.__controllers) {
                         if (ctrl != resetControl) ctrl.object = universe;
                 }
+                clearTimeout(autoResetTimer);
+                if (options.autoReset) {
+                        startAutoReset();
+                }
+        }
+        function startAutoReset() {
+                autoResetTimer = setTimeout(function() {
+                        if (options.autoReset) {
+                                reset(); // calls startAutoReset()
+                        }
+                }, options.resetInterval * 1000);
         }
         
         function captureLayers(numLayers) {
@@ -75,6 +100,9 @@ if (gl) {
                 }
         }
         playing = true;
+        if (options.autoReset) {
+                startAutoReset();
+        }
         requestAnimationFrame(render);
 } else {
         document.body.innerHTML =

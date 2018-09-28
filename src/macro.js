@@ -32,7 +32,7 @@ in vec3 a_pos;\n\
 \n\
 void main() {\n\
         gl_Position = u_mvp_matrix * vec4(a_pos, 1.0);\n\
-        gl_PointSize = 50000.0 / gl_Position.z;\n\
+        gl_PointSize = 70000.0 / gl_Position.z;\n\
 }\n\
 ';
 
@@ -180,7 +180,7 @@ class Universe {
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
                 this.setOption(options, 'lightMode', false, 'boolean');
-                this.setOption(options, 'bhVisible', true, 'boolean');
+                this.setOption(options, 'bhVisible', false, 'boolean');
                 this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
                 this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
                 this.setOption(options, 'galaxyRadius', DEFAULT_GALAXY_RADIUS, 'number');
