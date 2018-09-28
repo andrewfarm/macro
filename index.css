@@ -3,12 +3,15 @@ body {
         padding: 0;
         overflow: hidden;
         background: #000000;
-        font-family: Avenir Next, monospace;
-        color: #ffffff;
-        text-shadow:
-        0pt 0pt 8pt #66ccff,
-        0pt 0pt 8pt #66ccff,
-        0pt 0pt 8pt #66ccff;
+}
+
+#info {
+        position: absolute;
+        padding: 10px;
+        width: 100%;
+        text-align: center;
+        font-family: monospace;
+        font-size: 10pt;
 }
 
 .errmsg {
@@ -16,6 +19,12 @@ body {
         width: 60%;
         margin: auto;
         margin-top: 10em;
+        font-family: Avenir Next, monospace;
+        color: #ffffff;
+        text-shadow:
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff,
+        0pt 0pt 8pt #66ccff;
 }
 
 .errmsg h1 {
