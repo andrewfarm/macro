@@ -7,8 +7,7 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
-const STAR_INTENSITY = 0.05;
-//const STAR_INTENSITY = 1; //experimental
+const STAR_INTENSITY = 0.25;
 
 const STAR_POS_TEXTURE_UNIT = 0;
 const STAR_VEL_TEXTURE_UNIT = 1;
