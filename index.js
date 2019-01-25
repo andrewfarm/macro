@@ -3,6 +3,10 @@ const MOUSE_SENSITIVITY = 800.0;
 var canvas = document.getElementById('canvas');
 var info = document.getElementById('info');
 
+var gui;
+var resetter;
+
+
 var options = {
     autoReset: false,
     resetInterval: 15
@@ -22,37 +26,43 @@ if (gl) {
         function updateFontColor() {
                 info.style.color = universe.lightMode ? '#000000' : '#ffffff';
         }
+    
+        resetter = {reset: reset};
+    
+        function createControls(universe) {
+                gui = new dat.GUI();
+                gui.add(universe, 'galaxies').min(1).step(1).onFinishChange(reset);
+                gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(reset);
+                gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(reset);
+                gui.add(universe, 'lightMode').onFinishChange(updateFontColor);
+                gui.add(universe, 'bhVisible');
+                function restartAutoReset() {
+                        clearTimeout(autoResetTimer);
+                        if (options.autoReset) {
+                                startAutoReset();
+                        }
+                }
+                gui.add(options, 'autoReset').onFinishChange(restartAutoReset);
+                gui.add(options, 'resetInterval', 5, 30).onFinishChange(restartAutoReset);
+                var resetControl = gui.add(resetter, 'reset');
+        }
         
         var shouldContinue = true;
         var playing;
         var universe = new Universe(gl);
         updateFontColor();
-        var gui = new dat.GUI();
-        gui.add(universe, 'galaxies').min(1).step(1).onFinishChange(reset);
-        gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(reset);
-        gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(reset);
-        gui.add(universe, 'lightMode').onFinishChange(updateFontColor);
-        gui.add(universe, 'bhVisible');
-        function restartAutoReset() {
-                clearTimeout(autoResetTimer);
-                if (options.autoReset) {
-                        startAutoReset();
-                }
-        }
-        gui.add(options, 'autoReset').onFinishChange(restartAutoReset);
-        gui.add(options, 'resetInterval', 5, 30).onFinishChange(restartAutoReset);
-        var resetter = {reset: reset};
-        var resetControl = gui.add(resetter, 'reset');
+        createControls(universe);
+    
         function reset() {
                 universe = new Universe(gl, universe);
-                for (var ctrl of gui.__controllers) {
-                        if (ctrl != resetControl) ctrl.object = universe;
-                }
+                gui.destroy();
+                createControls(universe);
                 clearTimeout(autoResetTimer);
                 if (options.autoReset) {
                         startAutoReset();
                 }
         }
+
         function startAutoReset() {
                 autoResetTimer = setTimeout(function() {
                         if (options.autoReset) {
