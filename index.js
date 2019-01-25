@@ -1,3 +1,5 @@
+const MOUSE_SENSITITVITY = 0.005;
+
 var canvas = document.getElementById('canvas');
 var info = document.getElementById('info');
 
@@ -5,6 +7,7 @@ var gui;
 var resetter;
 
 var mouseDown = false;
+var mouseLastX, mouseLastY;
 
 var options = {
     autoReset: false,
@@ -82,21 +85,20 @@ if (gl) {
                 }
         }
     
-        canvas.addEventListener('mousedown', function(event) { mouseDown = true; });
+        canvas.addEventListener('mousedown', function(event) {
+            mouseDown = true;
+            mouseLastX = event.clientX;
+            mouseLastY = event.clientY;
+        });
         canvas.addEventListener('mouseup', function(event) { mouseDown = false; });
         canvas.addEventListener('mousemove',
                 function(event) {
                         if (mouseDown) {
-                                var camAzimuth = ((event.clientX - rect.left) /
-                                        canvas.width * 2.0 - 1.0) *
-                                        Math.PI;
-                                var camElevation = ((event.clientY - rect.top) /
-                                        canvas.height * -2.0 + 1.0) *
-                                        0.5 * Math.PI;
-                                var camX = DEFAULT_CAM_POS[2] * -Math.sin(camAzimuth);
-                                var camY = DEFAULT_CAM_POS[2] * -camElevation;
-                                var camZ = DEFAULT_CAM_POS[2] * Math.cos(camAzimuth);
-                                universe.moveCamera([camX, camY, camZ]);
+                                universe.rotateView(
+                                        (event.clientX - mouseLastX) * MOUSE_SENSITITVITY,
+                                        (event.clientY - mouseLastY) * MOUSE_SENSITITVITY);
+                                mouseLastX = event.clientX;
+                                mouseLastY = event.clientY;
                         }
                 });
         document.addEventListener('keypress',

@@ -185,13 +185,12 @@ class Universe {
                 this.setOption(options, 'galaxyRadius', DEFAULT_GALAXY_RADIUS, 'number');
                 this.setOption(options, 'bounds', DEFAULT_BOUNDS, 'number');
                 this.setOption(options, 'maxSpeed', DEFAULT_MAX_SPEED, 'number');
-                this.setOption(options, 'camPos', DEFAULT_CAM_POS);
-                this.camPos = vec3.fromValues(this.camPos[0], this.camPos[1], this.camPos[2]);
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
-                this.modelMatrix = mat4.identity(mat4.create());
-                this.viewMatrix = mat4.lookAt(mat4.create(),
-                        this.camPos,
+//                this.modelMatrix = mat4.identity(mat4.create());
+                this.viewRotationMatrix = mat4.identity(mat4.create());
+                this.viewTranslationMatrix = mat4.lookAt(mat4.create(),
+                        DEFAULT_CAM_POS,
                         vec3.fromValues(0.0, 0.0, 0.0),
                         vec3.fromValues(0.0, 1.0, 0.0));
                 this.projectionMatrix = mat4.perspective(mat4.create(),
@@ -361,17 +360,18 @@ class Universe {
                         this.starCount + ' stars');
         }
         
-        moveCamera(camPos) {
-                this.camPos = vec3.fromValues(camPos[0], camPos[1], camPos[2]);
-                mat4.lookAt(this.viewMatrix,
-                        this.camPos,
-                        vec3.fromValues(0.0, 0.0, 0.0),
-                        vec3.fromValues(0.0, 1.0, 0.0));
+        rotateView(angleX, angleY) {
+                mat4.multiply(this.viewRotationMatrix, mat4.fromYRotation(mat4.create(), angleX), this.viewRotationMatrix);
+                mat4.multiply(this.viewRotationMatrix, mat4.fromXRotation(mat4.create(), angleY), this.viewRotationMatrix);
+//                mat4.rotateY(this.viewRotationMatrix, this.viewRotationMatrix, angleX);
+//                mat4.rotateX(this.viewRotationMatrix, this.viewRotationMatrix, angleY);
                 this.updateMvpMatrix();
         }
         
         updateMvpMatrix() {
-                mat4.multiply(this.mvpMatrix, this.viewMatrix, this.modelMatrix);
+//                mat4.multiply(this.mvpMatrix, this.viewMatrix, this.modelMatrix);
+//                mat4.multiply(this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
+                mat4.multiply(this.mvpMatrix, this.viewTranslationMatrix, this.viewRotationMatrix);
                 mat4.multiply(this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
         }
         
