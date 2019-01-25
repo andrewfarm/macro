@@ -1,11 +1,10 @@
-const MOUSE_SENSITIVITY = 800.0;
-
 var canvas = document.getElementById('canvas');
 var info = document.getElementById('info');
 
 var gui;
 var resetter;
 
+var mouseDown = false;
 
 var options = {
     autoReset: false,
@@ -82,17 +81,23 @@ if (gl) {
                         newWindow.document.body.appendChild(layerImages[i]);
                 }
         }
-        
+    
+        canvas.addEventListener('mousedown', function(event) { mouseDown = true; });
+        canvas.addEventListener('mouseup', function(event) { mouseDown = false; });
         canvas.addEventListener('mousemove',
                 function(event) {
-                        var camX = ((event.clientX - rect.left) /
-                                canvas.width * 2.0 - 1.0) *
-                                MOUSE_SENSITIVITY;
-                        var camY = ((event.clientY - rect.top) /
-                                canvas.height * -2.0 + 1.0) *
-                                MOUSE_SENSITIVITY;
-                        var camZ = universe.camPos[2];
-                        universe.moveCamera([camX, camY, camZ]);
+                        if (mouseDown) {
+                                var camAzimuth = ((event.clientX - rect.left) /
+                                        canvas.width * 2.0 - 1.0) *
+                                        Math.PI;
+                                var camElevation = ((event.clientY - rect.top) /
+                                        canvas.height * -2.0 + 1.0) *
+                                        0.5 * Math.PI;
+                                var camX = DEFAULT_CAM_POS[2] * -Math.sin(camAzimuth);
+                                var camY = DEFAULT_CAM_POS[2] * -camElevation;
+                                var camZ = DEFAULT_CAM_POS[2] * Math.cos(camAzimuth);
+                                universe.moveCamera([camX, camY, camZ]);
+                        }
                 });
         document.addEventListener('keypress',
                 function(event) {
