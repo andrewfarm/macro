@@ -90,8 +90,8 @@ if (gl) {
             mouseLastX = event.clientX;
             mouseLastY = event.clientY;
         });
-        canvas.addEventListener('mouseup', function(event) { mouseDown = false; });
-        canvas.addEventListener('mousemove',
+        document.addEventListener('mouseup', function(event) { mouseDown = false; });
+        document.addEventListener('mousemove',
                 function(event) {
                         if (mouseDown) {
                                 universe.rotateView(
