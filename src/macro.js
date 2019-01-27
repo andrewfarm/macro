@@ -167,7 +167,9 @@ in vec2 v_tex_pos;\n\
 out vec4 fragColor;\n\
 \n\
 void main() {\n\
-        fragColor = vec4(vec3(1.0) - exp(-texture(u_screen_texture, v_tex_pos).rgb * u_hdr_exposure), 1.0);\n\
+        vec3 texColor = texture(u_screen_texture, v_tex_pos).rgb;\n\
+        vec3 hdrColor = vec3(1.0) - exp(-texColor * u_hdr_exposure);\n\
+        fragColor = vec4(hdrColor, 1.0);\n\
 }\n\
 ';
 
