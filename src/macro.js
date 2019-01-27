@@ -164,10 +164,10 @@ uniform float u_hdr_exposure;\n\
 \n\
 in vec2 v_tex_pos;\n\
 \n\
-out vec3 fragColor;\n\
+out vec4 fragColor;\n\
 \n\
 void main() {\n\
-        fragColor = vec3(1.0) - exp(-texture(u_screen_texture, v_tex_pos).rgb * u_hdr_exposure);\n\
+        fragColor = vec4(vec3(1.0) - exp(-texture(u_screen_texture, v_tex_pos).rgb * u_hdr_exposure), 1.0);\n\
 }\n\
 ';
 
