@@ -7,7 +7,7 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
-const STAR_INTENSITY = 0.25;
+const DEFAULT_STAR_INTENSITY = 0.25;
 const DEFAULT_HDR_EXPOSURE = 1.0;
 
 const STAR_POS_TEXTURE_UNIT = 0;
@@ -202,6 +202,7 @@ class Universe {
                 this.setOption(options, 'lightMode', false, 'boolean');
                 this.setOption(options, 'hdr', true, 'boolean');
                 this.setOption(options, 'hdrExposure', DEFAULT_HDR_EXPOSURE, 'number');
+                this.setOption(options, 'starIntensity', DEFAULT_STAR_INTENSITY, 'number');
                 this.setOption(options, 'bhVisible', false, 'boolean');
                 this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
                 this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
@@ -566,7 +567,7 @@ class Universe {
                 gl.uniform1i(this.starShaderProgram.u_star_2D_pos, STAR_2D_POS_TEXTURE_UNIT);
                 bindTexture(gl, this.galaxyTexture, GALAXY_TEXTURE_UNIT);
                 gl.uniform1i(this.starShaderProgram.u_galaxy_texture, GALAXY_TEXTURE_UNIT);
-                gl.uniform1f(this.starShaderProgram.u_intensity, STAR_INTENSITY);
+                gl.uniform1f(this.starShaderProgram.u_intensity, this.starIntensity);
                 
                 bindAttribute(gl, starIndexBuf, this.starShaderProgram.a_index, 1);
                 gl.drawArrays(gl.POINTS, 0, numStars);
