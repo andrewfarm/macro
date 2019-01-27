@@ -8,7 +8,7 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 const BLACK_HOLE_GRAVITY = 5000.0;
 
 const STAR_INTENSITY = 0.25;
-const HDR_EXPOSURE = 1.0;
+const DEFAULT_HDR_EXPOSURE = 1.0;
 
 const STAR_POS_TEXTURE_UNIT = 0;
 const STAR_VEL_TEXTURE_UNIT = 1;
@@ -198,6 +198,8 @@ class Universe {
                 console.assert(gl.getExtension('EXT_color_buffer_float'));
                 
                 this.setOption(options, 'lightMode', false, 'boolean');
+                this.setOption(options, 'hdr', true, 'boolean');
+                this.setOption(options, 'hdrExposure', DEFAULT_HDR_EXPOSURE, 'number');
                 this.setOption(options, 'bhVisible', false, 'boolean');
                 this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
                 this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
@@ -423,24 +425,26 @@ class Universe {
         }
         
         draw() {
-                this.readyDraw(this.screenBuf);
+                this.readyDraw(this.hdr ? this.screenBuf : null);
                 if (this.bhVisible) {
                         this.drawBlackHoles();
                 }
                 this.drawStars(this.starIndexBuffer, this.starCount);
             
-                // do postprocessing & render to screen
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                gl.disable(gl.DEPTH_TEST);
-                gl.useProgram(this.screenShaderProgram.program);
-                bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
-                gl.uniform1i(this.screenShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
-                gl.uniform1f(this.screenShaderProgram.u_hdr_exposure, HDR_EXPOSURE);
-                gl.bindVertexArray(this.quadVAO);
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                gl.bindVertexArray(null);
+                if (this.hdr) {
+                        // do postprocessing & render to screen
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                        gl.clear(gl.COLOR_BUFFER_BIT);
+                        gl.disable(gl.DEPTH_TEST);
+                        gl.useProgram(this.screenShaderProgram.program);
+                        bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
+                        gl.uniform1i(this.screenShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
+                        gl.uniform1f(this.screenShaderProgram.u_hdr_exposure, this.hdrExposure);
+                        gl.bindVertexArray(this.quadVAO);
+                        gl.drawArrays(gl.TRIANGLES, 0, 6);
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                        gl.bindVertexArray(null);
+                }
         }
         
         readyDraw(framebuffer) {

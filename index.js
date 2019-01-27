@@ -37,6 +37,8 @@ if (gl) {
                 gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(reset);
                 gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(reset);
                 gui.add(universe, 'lightMode').onFinishChange(updateFontColor);
+                gui.add(universe, 'hdr');
+                gui.add(universe, 'hdrExposure', 0.1, 5);
                 gui.add(universe, 'bhVisible');
                 function restartAutoReset() {
                         clearTimeout(autoResetTimer);
