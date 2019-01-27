@@ -112,6 +112,7 @@ if (gl) {
                                 captureLayers(32);
                         }
                 });
+        window.addEventListener('resize', function(event) { universe.displayResized(); });
 
         function render() {
                 universe.drawFrame();

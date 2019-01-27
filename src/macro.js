@@ -14,6 +14,7 @@ const STAR_VEL_TEXTURE_UNIT = 1;
 const STAR_2D_POS_TEXTURE_UNIT = 2;
 const GALAXY_TEXTURE_UNIT = 3;
 const BH_TEXTURE_UNIT = 4;
+const SCREEN_TEXTURE_UNIT = 5;
 
 const GALAXY_TEXTURE_URLS = [
         'res/spiral-galaxy.jpg',
@@ -152,6 +153,22 @@ void main() {\n\
 }\n\
 ';
 
+const SCREEN_FRAG = '\
+#version 300 es\n\
+\n\
+precision mediump float;\n\
+\n\
+uniform sampler2D u_screen_texture;\n\
+\n\
+in vec2 v_tex_pos;\n\
+\n\
+out vec4 fragColor;\n\
+\n\
+void main() {\n\
+        fragColor = texture(u_screen_texture, v_tex_pos) * vec4(0.3, 0.0, 1.0, 1.0);\n\
+}\n\
+';
+
 function randInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -235,6 +252,7 @@ class Universe {
                         STAR_UPDATE_FRAG.replace(/bh_count_to_replace/, this.blackHoles.length));
                 this.starUpdateShaderProgram.u_bh_pos = gl.getUniformLocation(
                         this.starUpdateShaderProgram.program, 'u_bh_pos[0]');
+                this.screenShaderProgram = createProgram(gl, QUAD_VERT, SCREEN_FRAG);
                 
                 this.blackHolePositions = new Float32Array(this.blackHoles.length * 3);
                 this.blackHolePosBuffer = gl.createBuffer();
@@ -251,6 +269,26 @@ class Universe {
                 bindAttribute(gl, this.quadPosBuffer, this.starUpdateShaderProgram.a_pos, 2);
                 bindAttribute(gl, this.quadTexPosBuffer, this.starUpdateShaderProgram.a_tex_pos, 2);
                 gl.bindVertexArray(null);
+            
+                this.screenTexture = gl.createTexture();
+                this.displayResized();
+                gl.bindTexture(gl.TEXTURE_2D, this.screenTexture);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            
+                this.screenBuf = gl.createFramebuffer();
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.screenBuf);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                        gl.TEXTURE_2D, this.screenTexture, 0);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+    
+        displayResized() {
+                // set size of screen framebuffer texture
+                gl.bindTexture(gl.TEXTURE_2D, this.screenTexture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.canvas.width, gl.canvas.height, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
         }
         
         setOption(options, property, defaultValue, type) {
@@ -383,11 +421,21 @@ class Universe {
         }
         
         draw() {
-                this.readyDraw(null);
+                this.readyDraw(this.screenBuf);
                 if (this.bhVisible) {
                         this.drawBlackHoles();
                 }
                 this.drawStars(this.starIndexBuffer, this.starCount);
+            
+                // do postprocessing & render to screen
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.disable(gl.DEPTH_TEST);
+                gl.useProgram(this.screenShaderProgram.program);
+                bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
+                gl.uniform1i(this.screenShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
+                gl.bindVertexArray(this.quadVAO);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
         
         readyDraw(framebuffer) {
