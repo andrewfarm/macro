@@ -439,6 +439,8 @@ class Universe {
                 gl.uniform1f(this.screenShaderProgram.u_hdr_exposure, HDR_EXPOSURE);
                 gl.bindVertexArray(this.quadVAO);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.bindVertexArray(null);
         }
         
         readyDraw(framebuffer) {
