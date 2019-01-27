@@ -8,6 +8,7 @@ const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 const BLACK_HOLE_GRAVITY = 5000.0;
 
 const STAR_INTENSITY = 0.25;
+const HDR_EXPOSURE = 1.0;
 
 const STAR_POS_TEXTURE_UNIT = 0;
 const STAR_VEL_TEXTURE_UNIT = 1;
@@ -159,13 +160,14 @@ const SCREEN_FRAG = '\
 precision mediump float;\n\
 \n\
 uniform sampler2D u_screen_texture;\n\
+uniform float u_hdr_exposure;\n\
 \n\
 in vec2 v_tex_pos;\n\
 \n\
-out vec4 fragColor;\n\
+out vec3 fragColor;\n\
 \n\
 void main() {\n\
-        fragColor = texture(u_screen_texture, v_tex_pos) * vec4(0.3, 0.0, 1.0, 1.0);\n\
+        fragColor = vec3(1.0) - exp(-texture(u_screen_texture, v_tex_pos).rgb * u_hdr_exposure);\n\
 }\n\
 ';
 
@@ -288,7 +290,7 @@ class Universe {
         displayResized() {
                 // set size of screen framebuffer texture
                 gl.bindTexture(gl.TEXTURE_2D, this.screenTexture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.canvas.width, gl.canvas.height, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.FLOAT, null);
         }
         
         setOption(options, property, defaultValue, type) {
@@ -434,6 +436,7 @@ class Universe {
                 gl.useProgram(this.screenShaderProgram.program);
                 bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
                 gl.uniform1i(this.screenShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
+                gl.uniform1f(this.screenShaderProgram.u_hdr_exposure, HDR_EXPOSURE);
                 gl.bindVertexArray(this.quadVAO);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
