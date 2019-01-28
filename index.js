@@ -4,16 +4,16 @@ var canvas = document.getElementById('canvas');
 var info = document.getElementById('info');
 
 var gui;
-var resetter;
+var restarter;
 
 var mouseDown = false;
 var mouseLastX, mouseLastY;
 
 var options = {
-    autoReset: false,
-    resetInterval: 15
+    autoRestart: false,
+    restartInterval: 15
 };
-var autoResetTimer;
+var autoRestartTimer;
 
 const gl = canvas.getContext('webgl2');
 if (gl) {
@@ -29,27 +29,27 @@ if (gl) {
                 info.style.color = universe.lightMode ? '#000000' : '#ffffff';
         }
     
-        resetter = {reset: reset};
+        restarter = {restart: restart};
     
         function createControls(universe) {
                 gui = new dat.GUI();
-                gui.add(universe, 'galaxies').min(1).step(1).onFinishChange(reset);
-                gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(reset);
-                gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(reset);
+                gui.add(universe, 'galaxies').min(1).step(1).onFinishChange(restart);
+                gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(restart);
+                gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(restart);
                 gui.add(universe, 'lightMode').onFinishChange(updateFontColor);
                 gui.add(universe, 'hdr');
                 gui.add(universe, 'hdrExposure', 0.1, 5);
                 gui.add(universe, 'starIntensity', 0.05, 0.5);
                 gui.add(universe, 'bhVisible');
-                function restartAutoReset() {
-                        clearTimeout(autoResetTimer);
-                        if (options.autoReset) {
-                                startAutoReset();
+                function restartAutoRestartTimer() {
+                        clearTimeout(autoRestartTimer);
+                        if (options.autoRestart) {
+                                startAutoRestartTimer();
                         }
                 }
-                gui.add(options, 'autoReset').onFinishChange(restartAutoReset);
-                gui.add(options, 'resetInterval', 5, 30).onFinishChange(restartAutoReset);
-                var resetControl = gui.add(resetter, 'reset');
+                gui.add(options, 'autoRestart').onFinishChange(restartAutoRestartTimer);
+                gui.add(options, 'restartInterval', 5, 30).onFinishChange(restartAutoRestartTimer);
+                gui.add(restarter, 'restart');
         }
         
         var shouldContinue = true;
@@ -58,22 +58,22 @@ if (gl) {
         updateFontColor();
         createControls(universe);
     
-        function reset() {
+        function restart() {
                 universe = new Universe(gl, universe);
                 gui.destroy();
                 createControls(universe);
-                clearTimeout(autoResetTimer);
-                if (options.autoReset) {
-                        startAutoReset();
+                clearTimeout(autoRestartTimer);
+                if (options.autoRestart) {
+                        startAutoRestartTimer();
                 }
         }
 
-        function startAutoReset() {
-                autoResetTimer = setTimeout(function() {
-                        if (options.autoReset) {
-                                reset(); // calls startAutoReset()
+        function startAutoRestartTimer() {
+                autoRestartTimer = setTimeout(function() {
+                        if (options.autoRestart) {
+                                restart(); // calls startAutoRestartTimer()
                         }
-                }, options.resetInterval * 1000);
+                }, options.restartInterval * 1000);
         }
         
         function captureLayers(numLayers) {
@@ -108,7 +108,7 @@ if (gl) {
                 function(event) {
 //                        console.log('event.which', event.which);
                         if (event.which === 13) { // enter
-                                reset();
+                                restart();
                         } else if (event.which == 32) { // space
                                 playing = !playing;
                         } else if (event.which == 96) { // tilde
@@ -127,8 +127,8 @@ if (gl) {
                 }
         }
         playing = true;
-        if (options.autoReset) {
-                startAutoReset();
+        if (options.autoRestart) {
+                startAutoRestartTimer();
         }
         requestAnimationFrame(render);
 } else {
