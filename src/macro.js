@@ -293,6 +293,7 @@ class Universe {
         }
     
         displayResized() {
+                const gl = this.gl;
                 // set size of screen framebuffer texture
                 gl.bindTexture(gl.TEXTURE_2D, this.screenTexture);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.FLOAT, null);
@@ -428,6 +429,8 @@ class Universe {
         }
         
         draw() {
+                const gl = this.gl;
+            
                 this.readyDraw(this.hdr ? this.screenBuf : null);
                 if (this.bhVisible) {
                         this.drawBlackHoles();
@@ -638,6 +641,7 @@ class Universe {
         }
         
         updateFramebufferAttachments() {
+                const gl = this.gl;
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.starStateBuf);
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
                         gl.TEXTURE_2D, this.starPosTexture1, 0);
@@ -648,6 +652,7 @@ class Universe {
         }
         
         updateBlackHolePosBuffer() {
+                const gl = this.gl;
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.blackHolePosBuffer);
                 gl.bufferData(gl.ARRAY_BUFFER, this.blackHolePositions, gl.DYNAMIC_DRAW);
                 gl.bindBuffer(gl.ARRAY_BUFFER, null);
