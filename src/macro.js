@@ -449,9 +449,6 @@ class Universe {
                 const gl = this.gl;
             
                 this.readyDraw(this.hdr ? this.screenBuf : null);
-                if (this.showBlackHoles) {
-                        this.drawBlackHoles();
-                }
                 this.drawStars();
             
                 if (this.hdr) {
@@ -467,6 +464,10 @@ class Universe {
                         gl.drawArrays(gl.TRIANGLES, 0, 6);
                         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                         gl.bindVertexArray(null);
+                }
+            
+                if (this.showBlackHoles) {
+                        this.drawBlackHoles();
                 }
         }
         
