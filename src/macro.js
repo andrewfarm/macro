@@ -23,6 +23,9 @@ const GALAXY_TEXTURE_URLS = [
 ];
 const BH_TEXTURE_URL = 'res/bh.jpg';
 
+var galaxyTextures = [];
+var galaxyTexturesNeedLoading = true;
+
 const BH_VERT = '\
 #version 300 es\n\
 \n\
@@ -191,6 +194,26 @@ class BlackHole {
         }
 }
 
+function loadGalaxyTextures(gl) {
+        galaxyTexturesNeedLoading = false;
+    
+        for (let galaxyTextureURL of GALAXY_TEXTURE_URLS) {
+                let galaxyTexture = createTexture(gl, gl.NEAREST,
+                        new Uint8Array([255, 255, 255, 255]), 1, 1);
+                galaxyTextures.push(galaxyTexture);
+            
+                let galaxyImage = new Image();
+                galaxyImage.onload = function() {
+                        gl.bindTexture(gl.TEXTURE_2D, galaxyTexture);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, galaxyImage);
+                        gl.bindTexture(gl.TEXTURE_2D, null);
+                        console.log('galaxy texture loaded (' +
+                        galaxyImage.width + 'x' + galaxyImage.height + ')');
+                };
+                galaxyImage.src = galaxyTextureURL;
+        }
+}
+
 class Universe {
         constructor(gl, options) {
                 this.gl = gl;
@@ -221,19 +244,12 @@ class Universe {
                 this.updateMvpMatrix();
                 this.genesis();
                 
-                // load galaxy texture
-                var galaxyTexture = createTexture(gl, gl.NEAREST,
-                        new Uint8Array([255, 255, 255, 255]), 1, 1);
-                const galaxyImage = new Image();
-                galaxyImage.onload = function() {
-                        gl.bindTexture(gl.TEXTURE_2D, galaxyTexture);
-                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, galaxyImage);
-                        gl.bindTexture(gl.TEXTURE_2D, null);
-                        console.log('galaxy texture loaded (' +
-                                galaxyImage.width + 'x' + galaxyImage.height + ')');
-                };
-                this.galaxyTexture = galaxyTexture;
-                galaxyImage.src = GALAXY_TEXTURE_URLS[Math.floor(Math.random() * GALAXY_TEXTURE_URLS.length)];
+                // load galaxy textures
+                if (galaxyTexturesNeedLoading) {
+                        loadGalaxyTextures(gl);
+                }
+            
+                this.galaxyTexture = galaxyTextures[Math.floor(Math.random() * galaxyTextures.length)];
                 
                 // load black hole texture
                 var bhTexture = createTexture(gl, gl.LINEAR,
@@ -318,7 +334,7 @@ class Universe {
                 const starPosBuf = new Float32Array(this.starTexelCount * 4);
                 const starVelBuf = new Float32Array(this.starTexelCount * 4);
                 const starTexCoordsArray = new Float32Array(this.starCount * 2);
-                
+            
                 //generate black holes
                 this.blackHoles = [];
                 var arrayOffset = 0;
@@ -390,8 +406,7 @@ class Universe {
                 this.starVelTexture1 = createEmptyTexture(gl, gl.NEAREST, gl.RGBA32F,
                         this.starStateTextureRes, this.starStateTextureRes,
                         gl.RGBA32F);
-                        
-                //store 2D initial positions of stars (for texturing) in buffer
+            
                 this.starTexCoordsBuffer = createBuffer(gl, starTexCoordsArray);
                 
                 //store star indices in buffer
