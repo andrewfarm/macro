@@ -2,7 +2,7 @@ const DEFAULT_GALAXIES = 2;
 const DEFAULT_STARS_PER_GALAXY = 500000;
 const DEFAULT_GALAXY_RADIUS = 150.0;
 const DEFAULT_BOUNDS = 500.0;
-const DEFAULT_MAX_SPEED = 2.0;
+const DEFAULT_MAX_GALAXY_SPEED = 2.0;
 const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 
 const BLACK_HOLE_GRAVITY = 5000.0;
@@ -223,12 +223,12 @@ class Universe {
                 this.setOption(options, 'hdr', true, 'boolean');
                 this.setOption(options, 'hdrExposure', DEFAULT_HDR_EXPOSURE, 'number');
                 this.setOption(options, 'starIntensity', DEFAULT_STAR_INTENSITY, 'number');
-                this.setOption(options, 'bhVisible', false, 'boolean');
+                this.setOption(options, 'showBlackHoles', false, 'boolean');
                 this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
                 this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
                 this.setOption(options, 'galaxyRadius', DEFAULT_GALAXY_RADIUS, 'number');
                 this.setOption(options, 'bounds', DEFAULT_BOUNDS, 'number');
-                this.setOption(options, 'maxSpeed', DEFAULT_MAX_SPEED, 'number');
+                this.setOption(options, 'maxGalaxySpeed', DEFAULT_MAX_GALAXY_SPEED, 'number');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
 //                this.modelMatrix = mat4.identity(mat4.create());
@@ -345,7 +345,7 @@ class Universe {
                 var starVel = vec4.create();
                 var galaxyRotationMatrix = mat4.create();
                 for (var i = 0; i < this.galaxies; i++) {
-                        this.blackHoles[i] = new BlackHole(this.bounds, this.maxSpeed);
+                        this.blackHoles[i] = new BlackHole(this.bounds, this.maxGalaxySpeed);
                         
                         //randomize galaxy orientation
                         mat4.identity(galaxyRotationMatrix);
@@ -436,7 +436,7 @@ class Universe {
         }
         
         drawFrame() {
-                if (this.bhVisible) {
+                if (this.showBlackHoles) {
                         this.updateBlackHolePosBuffer();
                 }
                 this.draw();
@@ -446,7 +446,7 @@ class Universe {
                 const gl = this.gl;
             
                 this.readyDraw(this.hdr ? this.screenBuf : null);
-                if (this.bhVisible) {
+                if (this.showBlackHoles) {
                         this.drawBlackHoles();
                 }
                 this.drawStars();
