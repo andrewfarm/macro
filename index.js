@@ -112,7 +112,7 @@ if (gl) {
                         } else if (event.which == 32) { // space
                                 playing = !playing;
                         } else if (event.which == 96) { // tilde
-                                captureLayers(32);
+//                                captureLayers(32);
                         }
                 });
         window.addEventListener('resize', function(event) { universe.displayResized(); });
