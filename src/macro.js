@@ -12,7 +12,6 @@ const DEFAULT_HDR_EXPOSURE = 1.0;
 
 const STAR_POS_TEXTURE_UNIT = 0;
 const STAR_VEL_TEXTURE_UNIT = 1;
-const STAR_2D_POS_TEXTURE_UNIT = 2;
 const GALAXY_TEXTURE_UNIT = 3;
 const BH_TEXTURE_UNIT = 4;
 const SCREEN_TEXTURE_UNIT = 5;
@@ -64,11 +63,11 @@ precision mediump float;\n\
 \n\
 uniform mat4 u_mvp_matrix;\n\
 uniform sampler2D u_star_pos;\n\
-uniform sampler2D u_star_2D_pos;\n\
 uniform sampler2D u_galaxy_texture;\n\
 uniform float u_star_res;\n\
 \n\
 in float a_index;\n\
+in vec2 a_star_tex_coords;\n\
 \n\
 out vec4 v_color;\n\
 \n\
@@ -79,9 +78,7 @@ vec4 getTexelColor(sampler2D sampler, float index) {\n\
 }\n\
 \n\
 void main() {\n\
-        vec4 star2DPos = getTexelColor(u_star_2D_pos, a_index);\n\
-        v_color = texture(u_galaxy_texture, star2DPos.xy);\n\
-//        v_color = vec4(star2DPos.x, star2DPos.y, 0.0, 1.0); //experimental\n\
+        v_color = texture(u_galaxy_texture, a_star_tex_coords);\n\
         vec4 starPos = getTexelColor(u_star_pos, a_index);\n\
         gl_Position = u_mvp_matrix * vec4(starPos.xyz, 1.0);\n\
         gl_PointSize = 1000.0 / gl_Position.z;\n\
@@ -320,11 +317,12 @@ class Universe {
                         ' texels)');
                 const starPosBuf = new Float32Array(this.starTexelCount * 4);
                 const starVelBuf = new Float32Array(this.starTexelCount * 4);
-                const star2DPosBuf = new Float32Array(this.starTexelCount * 4);
+                const starTexCoordsArray = new Float32Array(this.starCount * 2);
                 
                 //generate black holes
                 this.blackHoles = [];
                 var arrayOffset = 0;
+                var arrayOffset2 = 0;
                 var starDistFraction, starDist, starAngle;
                 var starPos = vec4.create();
                 var starSpeed;
@@ -359,8 +357,8 @@ class Universe {
                                         0.0,
                                         0.0);
                                 
-                                star2DPosBuf[arrayOffset]     = (starPos[0] + 1.0) / 2;
-                                star2DPosBuf[arrayOffset + 1] = (starPos[1] + 1.0) / 2;
+                                starTexCoordsArray[arrayOffset2]     = (starPos[0] + 1.0) / 2;
+                                starTexCoordsArray[arrayOffset2 + 1] = (starPos[1] + 1.0) / 2;
                                 
                                 vec4.scale(starPos, starPos, this.galaxyRadius);
                                 
@@ -376,6 +374,7 @@ class Universe {
                                 starVelBuf[arrayOffset + 2] = this.blackHoles[i].vel[2] + starVel[2];
                                 
                                 arrayOffset += 4;
+                                arrayOffset2 += 2;
                         }
                 }
                 
@@ -391,9 +390,9 @@ class Universe {
                 this.starVelTexture1 = createEmptyTexture(gl, gl.NEAREST, gl.RGBA32F,
                         this.starStateTextureRes, this.starStateTextureRes,
                         gl.RGBA32F);
-                //store 2D initial positions of stars (for texturing) in texture
-                this.star2DPosTexture = createTexture(gl, gl.NEAREST, star2DPosBuf,
-                        this.starStateTextureRes, this.starStateTextureRes);
+                        
+                //store 2D initial positions of stars (for texturing) in buffer
+                this.starTexCoordsBuffer = createBuffer(gl, starTexCoordsArray);
                 
                 //store star indices in buffer
                 var starIndices = new Float32Array(this.starCount);
@@ -435,7 +434,7 @@ class Universe {
                 if (this.bhVisible) {
                         this.drawBlackHoles();
                 }
-                this.drawStars(this.starIndexBuffer, this.starCount);
+                this.drawStars();
             
                 if (this.hdr) {
                         // do postprocessing & render to screen
@@ -513,8 +512,8 @@ class Universe {
                                 gl, Float32Array.from(layerStarIndices[i]));
                         
                         this.readyDraw(layerFramebuffer);
-                        this.drawStars(layerStarIndexBuf, layerStarIndices[i].length);
-                        
+//                        this.drawStars(layerStarIndexBuf, layerStarIndices[i].length); drawStars function changed
+                    
                         var layerPixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
                         gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height,
                                 gl.RGBA, gl.UNSIGNED_BYTE, layerPixels);
@@ -552,7 +551,7 @@ class Universe {
                 gl.drawArrays(gl.POINTS, 0, this.blackHoles.length);
         }
         
-        drawStars(starIndexBuf, numStars) {
+        drawStars() {
                 const gl = this.gl;
                 gl.disable(gl.DEPTH_TEST);
 //                gl.enable(gl.DEPTH_TEST); //experimental
@@ -566,14 +565,13 @@ class Universe {
 //                gl.uniform4fv(this.starShaderProgram.u_color,
 //                        this.lightMode ? [0, 0, 0, STAR_INTENSITY] :
 //                              [STAR_INTENSITY, STAR_INTENSITY, STAR_INTENSITY, 1]);
-                bindTexture(gl, this.star2DPosTexture, STAR_2D_POS_TEXTURE_UNIT);
-                gl.uniform1i(this.starShaderProgram.u_star_2D_pos, STAR_2D_POS_TEXTURE_UNIT);
                 bindTexture(gl, this.galaxyTexture, GALAXY_TEXTURE_UNIT);
                 gl.uniform1i(this.starShaderProgram.u_galaxy_texture, GALAXY_TEXTURE_UNIT);
                 gl.uniform1f(this.starShaderProgram.u_intensity, this.starIntensity);
                 
-                bindAttribute(gl, starIndexBuf, this.starShaderProgram.a_index, 1);
-                gl.drawArrays(gl.POINTS, 0, numStars);
+                bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
+                bindAttribute(gl, this.starTexCoordsBuffer, this.starShaderProgram.a_star_tex_coords, 2);
+                gl.drawArrays(gl.POINTS, 0, this.starCount);
         }
         
         update() {
