@@ -4,6 +4,7 @@ const DEFAULT_GALAXY_RADIUS = 150.0;
 const DEFAULT_BOUNDS = 500.0;
 const DEFAULT_MAX_GALAXY_SPEED = 2.0;
 const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
+const DEFAULT_SPEED = 1.0;
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
@@ -125,6 +126,7 @@ const STAR_UPDATE_FRAG = '\
 \n\
 precision mediump float;\n\
 \n\
+uniform float u_speed;\n\
 uniform float u_bh_gravity;\n\
 uniform sampler2D u_star_pos;\n\
 uniform sampler2D u_star_vel;\n\
@@ -148,8 +150,8 @@ void main() {\n\
         for (int i = 0; i < BH_COUNT; i++) {\n\
                 acc += gAcc(pos, u_bh_pos[i]);\n\
         }\n\
-        vec3 newVel = vel + acc;\n\
-        new_star_pos = vec4(pos + newVel, 0.0);\n\
+        vec3 newVel = vel + acc * u_speed;\n\
+        new_star_pos = vec4(pos + newVel * u_speed, 0.0);\n\
         new_star_vel = vec4(newVel, 0.0);\n\
 }\n\
 ';
@@ -229,6 +231,7 @@ class Universe {
                 this.setOption(options, 'galaxyRadius', DEFAULT_GALAXY_RADIUS, 'number');
                 this.setOption(options, 'bounds', DEFAULT_BOUNDS, 'number');
                 this.setOption(options, 'maxGalaxySpeed', DEFAULT_MAX_GALAXY_SPEED, 'number');
+                this.setOption(options, 'speed', DEFAULT_SPEED, 'number');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
 //                this.modelMatrix = mat4.identity(mat4.create());
@@ -601,14 +604,15 @@ class Universe {
                                 acc = vec3.create();
                                 vec3.subtract(acc, this.blackHoles[i].pos, this.blackHoles[j].pos);
                                 vec3.scale(acc, acc, BLACK_HOLE_GRAVITY /
-                                        (vec3.length(acc) * vec3.squaredLength(acc)));
+                                        (vec3.length(acc) * vec3.squaredLength(acc)) *
+                                        this.speed);
                                 vec3.add(this.blackHoles[j].vel, this.blackHoles[j].vel, acc);
                                 vec3.subtract(this.blackHoles[i].vel, this.blackHoles[i].vel, acc);
                         }
                 }
                 
                 for (var bh of this.blackHoles) {
-                        vec3.add(bh.pos, bh.pos, bh.vel);
+                        vec3.add(bh.pos, bh.pos, vec3.scale(vec3.create(), bh.vel, this.speed));
                 }
                 
                 var arrayOffset = 0;
@@ -627,6 +631,7 @@ class Universe {
                 
                 bindTexture(gl, this.starPosTexture0, STAR_POS_TEXTURE_UNIT);
                 bindTexture(gl, this.starVelTexture0, STAR_VEL_TEXTURE_UNIT);
+                gl.uniform1f(this.starUpdateShaderProgram.u_speed, this.speed);
                 gl.uniform1f(this.starUpdateShaderProgram.u_bh_gravity, BLACK_HOLE_GRAVITY);
                 gl.uniform1i(this.starUpdateShaderProgram.u_star_pos, STAR_POS_TEXTURE_UNIT);
                 gl.uniform1i(this.starUpdateShaderProgram.u_star_vel, STAR_VEL_TEXTURE_UNIT);

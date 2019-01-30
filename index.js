@@ -36,6 +36,7 @@ if (gl) {
                 gui.add(universe, 'galaxies').min(1).step(1).onFinishChange(restart);
                 gui.add(universe, 'starsPerGalaxy', 1e5, 1e7).onFinishChange(restart);
                 gui.add(universe, 'galaxyRadius', 50, 200).onFinishChange(restart);
+                gui.add(universe, 'speed', 0.1, 2.5)
                 gui.add(universe, 'lightMode').onFinishChange(updateFontColor);
                 gui.add(universe, 'hdr');
                 gui.add(universe, 'hdrExposure', 0.1, 5);
