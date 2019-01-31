@@ -59,6 +59,10 @@ if (gl) {
         updateFontColor();
         createControls(universe);
     
+        var stats = new Stats();
+        stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+        document.body.appendChild(stats.dom);
+    
         function restart() {
                 universe = new Universe(gl, universe);
                 gui.destroy();
@@ -119,10 +123,12 @@ if (gl) {
         window.addEventListener('resize', function(event) { universe.displayResized(); });
 
         function render() {
+                stats.begin();
                 universe.drawFrame();
                 if (playing) {
                         universe.update();
                 }
+                stats.end();
                 if (shouldContinue) {
                         requestAnimationFrame(render);
                 }
