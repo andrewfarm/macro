@@ -40,6 +40,7 @@ if (gl) {
                 gui.add(universe, 'lightMode').onFinishChange(updateFontColor);
                 gui.add(universe, 'hdr');
                 gui.add(universe, 'hdrExposure', 0.1, 5);
+                gui.add(universe, 'starSize', 100, 5000);
                 gui.add(universe, 'starIntensity', 0.05, 0.5);
                 gui.add(universe, 'showBlackHoles');
                 function restartAutoRestartTimer() {
