@@ -8,6 +8,7 @@ const DEFAULT_SPEED = 1.0;
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
+const DEFAULT_STAR_SIZE = 1000.0;
 const DEFAULT_STAR_INTENSITY = 0.25;
 const DEFAULT_HDR_EXPOSURE = 1.0;
 
@@ -65,6 +66,7 @@ const STAR_VERT = '\
 \n\
 precision mediump float;\n\
 \n\
+uniform float u_star_size;\n\
 uniform mat4 u_mvp_matrix;\n\
 uniform sampler2D u_star_pos;\n\
 uniform sampler2D u_galaxy_texture;\n\
@@ -85,7 +87,7 @@ void main() {\n\
         v_color = texture(u_galaxy_texture, a_star_tex_coords);\n\
         vec4 starPos = getTexelColor(u_star_pos, a_index);\n\
         gl_Position = u_mvp_matrix * vec4(starPos.xyz, 1.0);\n\
-        gl_PointSize = 1000.0 / gl_Position.z;\n\
+        gl_PointSize = u_star_size / gl_Position.z;\n\
 }\n\
 ';
 
@@ -225,6 +227,7 @@ class Universe {
                 this.setOption(options, 'hdr', true, 'boolean');
                 this.setOption(options, 'hdrExposure', DEFAULT_HDR_EXPOSURE, 'number');
                 this.setOption(options, 'starIntensity', DEFAULT_STAR_INTENSITY, 'number');
+                this.setOption(options, 'starSize', DEFAULT_STAR_SIZE, 'number');
                 this.setOption(options, 'showBlackHoles', false, 'boolean');
                 this.setOption(options, 'galaxies', DEFAULT_GALAXIES, 'number');
                 this.setOption(options, 'starsPerGalaxy', DEFAULT_STARS_PER_GALAXY, 'number');
@@ -587,6 +590,7 @@ class Universe {
                 bindTexture(gl, this.galaxyTexture, GALAXY_TEXTURE_UNIT);
                 gl.uniform1i(this.starShaderProgram.u_galaxy_texture, GALAXY_TEXTURE_UNIT);
                 gl.uniform1f(this.starShaderProgram.u_intensity, this.starIntensity);
+                gl.uniform1f(this.starShaderProgram.u_star_size, this.starSize);
                 
                 bindAttribute(gl, this.starIndexBuffer, this.starShaderProgram.a_index, 1);
                 bindAttribute(gl, this.starTexCoordsBuffer, this.starShaderProgram.a_star_tex_coords, 2);
