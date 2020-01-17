@@ -129,6 +129,7 @@ if (gl) {
         function render() {
                 stats.begin();
                 universe.drawFrame();
+                universe.updateAnimation();
                 if (playing) {
                         universe.update();
                 }

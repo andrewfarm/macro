@@ -6,6 +6,8 @@ const DEFAULT_MAX_GALAXY_SPEED = 2.0;
 const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 const DEFAULT_SPEED = 1.0;
 
+const RECENTER_TRANSITION_SPEED = 0.01;
+
 const BLACK_HOLE_GRAVITY = 5000.0;
 
 const DEFAULT_STAR_SIZE = 1000.0;
@@ -238,6 +240,12 @@ class Universe {
                 this.setOption(options, 'autocenter', false, 'boolean');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
+                this.center = vec3.create();
+                this.recentering = false;
+                this.recenterStart = null;
+                this.recenterEnd = null;
+                this.recenterTransitionProgress = 0.0;
+                
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewRotationMatrix = mat4.identity(mat4.create());
                 this.viewTranslationMatrix = mat4.lookAt(mat4.create(),
@@ -436,15 +444,17 @@ class Universe {
         }
         
         recenter() {
-                // calculate the average of the black hole positions and negate it
-                var translationVec = vec3.create();
-                for (let bh of this.blackHoles) {
-                        vec3.add(translationVec, translationVec, bh.pos);
-                }
-                vec3.scale(translationVec, translationVec, -1.0 / this.blackHoles.length);
+                this.recenterStart = this.center;
                 
-                mat4.fromTranslation(this.modelMatrix, translationVec);
-                this.updateMvpMatrix();
+                // calculate the average of the black hole positions and negate it
+                this.recenterEnd = vec3.create();
+                for (let bh of this.blackHoles) {
+                        vec3.add(this.recenterEnd, this.recenterEnd, bh.pos);
+                }
+                vec3.scale(this.recenterEnd, this.recenterEnd, -1.0 / this.blackHoles.length);
+                
+                this.recenterTransitionProgress = 0.0;
+                this.recentering = true;
         }
         
         updateMvpMatrix() {
@@ -611,7 +621,28 @@ class Universe {
                 gl.drawArrays(gl.POINTS, 0, this.starCount);
         }
         
+        easeSine(x) {
+                return Math.sin((x - 0.5) * Math.PI) * 0.5 + 0.5;
+        }
+        
+        updateAnimation() {
+                if (this.recentering) {
+                        this.recenterTransitionProgress += RECENTER_TRANSITION_SPEED;
+                        if (this.recenterTransitionProgress > 1.0) {
+                                this.recenterTransitionProgress = 0.0;
+                                this.recenterStart = null;
+                                this.recenterEnd = null;
+                                this.recentering = false;
+                        } else {
+                                vec3.lerp(this.center, this.recenterStart, this.recenterEnd, this.easeSine(this.recenterTransitionProgress));
+                                mat4.fromTranslation(this.modelMatrix, this.center);
+                                this.updateMvpMatrix();
+                        }
+                }
+        }
+        
         update() {
+                this.updateAnimation();
                 this.updateBlackHoles();
                 this.updateStars();
         }
