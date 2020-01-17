@@ -240,10 +240,10 @@ class Universe {
                 this.setOption(options, 'autocenter', false, 'boolean');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
-                this.center = vec3.create();
+                this.centerTranslation = vec3.create();
                 this.recentering = false;
-                this.recenterStart = null;
-                this.recenterEnd = null;
+                this.recenterStart = vec3.create();;
+                this.recenterEnd = vec3.create();;
                 this.recenterTransitionProgress = 0.0;
                 
                 this.modelMatrix = mat4.identity(mat4.create());
@@ -255,9 +255,11 @@ class Universe {
                 this.projectionMatrix = mat4.perspective(mat4.create(),
                         Math.PI / 3.0, gl.canvas.width / gl.canvas.height, 1.0, 10000.0);
                 
-                this.mvpMatrix = mat4.create();
-                this.updateMvpMatrix();
                 this.genesis();
+                
+                this.mvpMatrix = mat4.create();
+//                this.recenter(false);
+                this.updateMvpMatrix();
                 
                 // load galaxy textures
                 if (galaxyTexturesNeedLoading) {
@@ -443,18 +445,29 @@ class Universe {
                 this.updateMvpMatrix();
         }
         
-        recenter() {
-                this.recenterStart = this.center;
-                
-                // calculate the average of the black hole positions and negate it
-                this.recenterEnd = vec3.create();
+        negativeAvgBlackHolePos(out) {
+                vec3.set(out, 0.0, 0.0, 0.0);
                 for (let bh of this.blackHoles) {
-                        vec3.add(this.recenterEnd, this.recenterEnd, bh.pos);
+                        vec3.add(out, out, bh.pos);
                 }
-                vec3.scale(this.recenterEnd, this.recenterEnd, -1.0 / this.blackHoles.length);
-                
-                this.recenterTransitionProgress = 0.0;
-                this.recentering = true;
+                vec3.scale(out, out, -1.0 / this.blackHoles.length);
+                return out;
+        }
+        
+        recenter(animate = true, updateMVP) {
+                if (animate) {
+                        this.recenterStart = this.centerTranslation;
+                        this.negativeAvgBlackHolePos(this.recenterEnd);
+                        this.recenterTransitionProgress = 0.0;
+                        this.recentering = true;
+                } else {
+                        this.negativeAvgBlackHolePos(this.centerTranslation);
+                        this.updateModelMatrix();
+                }
+        }
+        
+        updateModelMatrix() {
+                mat4.fromTranslation(this.modelMatrix, this.centerTranslation);
         }
         
         updateMvpMatrix() {
@@ -630,12 +643,10 @@ class Universe {
                         this.recenterTransitionProgress += RECENTER_TRANSITION_SPEED;
                         if (this.recenterTransitionProgress > 1.0) {
                                 this.recenterTransitionProgress = 0.0;
-                                this.recenterStart = null;
-                                this.recenterEnd = null;
                                 this.recentering = false;
                         } else {
-                                vec3.lerp(this.center, this.recenterStart, this.recenterEnd, this.easeSine(this.recenterTransitionProgress));
-                                mat4.fromTranslation(this.modelMatrix, this.center);
+                                vec3.lerp(this.centerTranslation, this.recenterStart, this.recenterEnd, this.easeSine(this.recenterTransitionProgress));
+                                this.updateModelMatrix();
                                 this.updateMvpMatrix();
                         }
                 }
