@@ -235,9 +235,10 @@ class Universe {
                 this.setOption(options, 'bounds', DEFAULT_BOUNDS, 'number');
                 this.setOption(options, 'maxGalaxySpeed', DEFAULT_MAX_GALAXY_SPEED, 'number');
                 this.setOption(options, 'speed', DEFAULT_SPEED, 'number');
+                this.setOption(options, 'autocenter', false, 'boolean');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
-//                this.modelMatrix = mat4.identity(mat4.create());
+                this.modelMatrix = mat4.identity(mat4.create());
                 this.viewRotationMatrix = mat4.identity(mat4.create());
                 this.viewTranslationMatrix = mat4.lookAt(mat4.create(),
                         DEFAULT_CAM_POS,
@@ -434,10 +435,23 @@ class Universe {
                 this.updateMvpMatrix();
         }
         
+        recenter() {
+                // calculate the average of the black hole positions and negate it
+                var translationVec = vec3.create();
+                for (let bh of this.blackHoles) {
+                        vec3.add(translationVec, translationVec, bh.pos);
+                }
+                vec3.scale(translationVec, translationVec, -1.0 / this.blackHoles.length);
+                
+                mat4.fromTranslation(this.modelMatrix, translationVec);
+                this.updateMvpMatrix();
+        }
+        
         updateMvpMatrix() {
 //                mat4.multiply(this.mvpMatrix, this.viewMatrix, this.modelMatrix);
 //                mat4.multiply(this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
-                mat4.multiply(this.mvpMatrix, this.viewTranslationMatrix, this.viewRotationMatrix);
+                mat4.multiply(this.mvpMatrix, this.viewRotationMatrix, this.modelMatrix);
+                mat4.multiply(this.mvpMatrix, this.viewTranslationMatrix, this.mvpMatrix);
                 mat4.multiply(this.mvpMatrix, this.projectionMatrix, this.mvpMatrix);
         }
         

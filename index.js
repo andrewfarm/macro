@@ -43,12 +43,8 @@ if (gl) {
                 gui.add(universe, 'starSize', 100, 5000);
                 gui.add(universe, 'starIntensity', 0.05, 0.5);
                 gui.add(universe, 'showBlackHoles');
-                function restartAutoRestartTimer() {
-                        clearTimeout(autoRestartTimer);
-                        if (options.autoRestart) {
-                                startAutoRestartTimer();
-                        }
-                }
+                gui.add(universe, 'recenter');
+                gui.add(universe, 'autocenter');
                 gui.add(options, 'autoRestart').onFinishChange(restartAutoRestartTimer);
                 gui.add(options, 'restartInterval', 5, 30).onFinishChange(restartAutoRestartTimer);
                 gui.add(restarter, 'restart');
@@ -80,6 +76,13 @@ if (gl) {
                                 restart(); // calls startAutoRestartTimer()
                         }
                 }, options.restartInterval * 1000);
+        }
+        
+        function restartAutoRestartTimer() {
+                clearTimeout(autoRestartTimer);
+                if (options.autoRestart) {
+                        startAutoRestartTimer();
+                }
         }
         
         function captureLayers(numLayers) {
