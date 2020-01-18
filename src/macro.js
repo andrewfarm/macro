@@ -6,7 +6,7 @@ const DEFAULT_MAX_GALAXY_SPEED = 2.0;
 const DEFAULT_CAM_POS = vec3.fromValues(0.0, 0.0, DEFAULT_BOUNDS * 2.0);
 const DEFAULT_SPEED = 1.0;
 
-const RECENTER_TRANSITION_SPEED = 0.01;
+const RECENTER_TRANSITION_SPEED = 0.005;
 
 const BLACK_HOLE_GRAVITY = 5000.0;
 
@@ -237,7 +237,7 @@ class Universe {
                 this.setOption(options, 'bounds', DEFAULT_BOUNDS, 'number');
                 this.setOption(options, 'maxGalaxySpeed', DEFAULT_MAX_GALAXY_SPEED, 'number');
                 this.setOption(options, 'speed', DEFAULT_SPEED, 'number');
-                this.setOption(options, 'autocenter', false, 'boolean');
+                this.setOption(options, 'autoCenter', false, 'boolean');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
                 this.centerTranslation = vec3.create();
@@ -245,6 +245,7 @@ class Universe {
                 this.recenterStart = vec3.create();;
                 this.recenterEnd = vec3.create();;
                 this.recenterTransitionProgress = 0.0;
+                this.galaxiesDistFromCenter = vec3.create();
                 
                 this.modelMatrix = mat4.identity(mat4.create());
                 this.viewRotationMatrix = mat4.identity(mat4.create());
@@ -641,6 +642,7 @@ class Universe {
         updateAnimation() {
                 if (this.recentering) {
                         this.recenterTransitionProgress += RECENTER_TRANSITION_SPEED;
+                        console.log(this.recenterTransitionProgress);
                         if (this.recenterTransitionProgress > 1.0) {
                                 this.recenterTransitionProgress = 0.0;
                                 this.recentering = false;
@@ -653,7 +655,17 @@ class Universe {
         }
         
         update() {
-                this.updateAnimation();
+                if (this.autoCenter && !this.recentering) {
+                        vec3.subtract(this.galaxiesDistFromCenter, this.centerTranslation, this.negativeAvgBlackHolePos(vec3.create()));
+                        if ((this.galaxiesDistFromCenter[0] > this.bounds) ||
+                            (this.galaxiesDistFromCenter[1] > this.bounds) ||
+                            (this.galaxiesDistFromCenter[2] > this.bounds) ||
+                            (this.galaxiesDistFromCenter[0] < -this.bounds) ||
+                            (this.galaxiesDistFromCenter[1] < -this.bounds) ||
+                            (this.galaxiesDistFromCenter[2] < -this.bounds)) {
+                                this.recenter();
+                        }
+                }
                 this.updateBlackHoles();
                 this.updateStars();
         }

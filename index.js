@@ -44,7 +44,7 @@ if (gl) {
                 gui.add(universe, 'starIntensity', 0.05, 0.5);
                 gui.add(universe, 'showBlackHoles');
                 gui.add(universe, 'recenter');
-                gui.add(universe, 'autocenter');
+                gui.add(universe, 'autoCenter');
                 gui.add(options, 'autoRestart').onFinishChange(restartAutoRestartTimer);
                 gui.add(options, 'restartInterval', 5, 30).onFinishChange(restartAutoRestartTimer);
                 gui.add(restarter, 'restart');
