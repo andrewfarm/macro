@@ -162,6 +162,7 @@ void main() {\n\
 
 const SCREEN_FRAG = '\
 #version 300 es\n\
+define_light_mode\n\
 \n\
 precision mediump float;\n\
 \n\
@@ -174,7 +175,11 @@ out vec4 fragColor;\n\
 \n\
 void main() {\n\
         vec3 texColor = texture(u_screen_texture, v_tex_pos).rgb;\n\
+        #ifdef LIGHT_MODE\n\
+        vec3 hdrColor = texColor * u_hdr_exposure;\n\
+        #else\n\
         vec3 hdrColor = vec3(1.0) - exp(-texColor * u_hdr_exposure);\n\
+        #endif\n\
         fragColor = vec4(hdrColor, 1.0);\n\
 }\n\
 ';
@@ -290,7 +295,8 @@ class Universe {
                         STAR_UPDATE_FRAG.replace(/bh_count_to_replace/, this.blackHoles.length));
                 this.starUpdateShaderProgram.u_bh_pos = gl.getUniformLocation(
                         this.starUpdateShaderProgram.program, 'u_bh_pos[0]');
-                this.screenShaderProgram = createProgram(gl, QUAD_VERT, SCREEN_FRAG);
+                this.screenShaderProgramDark = createProgram(gl, QUAD_VERT, SCREEN_FRAG.replace(/define_light_mode/, ''));
+                this.screenShaderProgramLight = createProgram(gl, QUAD_VERT, SCREEN_FRAG.replace(/define_light_mode/, '#define LIGHT_MODE'));
                 
                 this.blackHolePositions = new Float32Array(this.blackHoles.length * 3);
                 this.blackHolePosBuffer = gl.createBuffer();
@@ -497,10 +503,11 @@ class Universe {
                         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                         gl.clear(gl.COLOR_BUFFER_BIT);
                         gl.disable(gl.DEPTH_TEST);
-                        gl.useProgram(this.screenShaderProgram.program);
+                        let screenShaderProgram = this.lightMode ? this.screenShaderProgramLight : this.screenShaderProgramDark;
+                        gl.useProgram(screenShaderProgram.program);
                         bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
-                        gl.uniform1i(this.screenShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
-                        gl.uniform1f(this.screenShaderProgram.u_hdr_exposure, this.hdrExposure);
+                        gl.uniform1i(screenShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
+                        gl.uniform1f(screenShaderProgram.u_hdr_exposure, this.hdrExposure);
                         gl.bindVertexArray(this.quadVAO);
                         gl.drawArrays(gl.TRIANGLES, 0, 6);
                         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
