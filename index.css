@@ -9,13 +9,33 @@ canvas {
     color: white;
 }
 
-#info {
+#infoPanel {
+        display: inline-block;
         position: absolute;
-        padding: 10px;
-        width: 100%;
         text-align: center;
         font-family: monospace;
         font-size: 10pt;
+        left: 50%;
+        transform: translateX(-50%);
+}
+
+#infoPanel>div {
+        display: block;
+        position: relative;
+}
+
+#info {
+        overflow: hidden;
+}
+
+#toggleInfoButton {
+        background-color: rgba(255, 255, 255, 0.0);
+        cursor: pointer;
+        height: 14pt;
+}
+
+#toggleInfoButton:hover {
+        background-color: rgba(255, 255, 255, 0.1);
 }
 
 .errmsg {

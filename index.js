@@ -1,7 +1,12 @@
 const MOUSE_SENSITITVITY = 0.005;
 
-var canvas = document.getElementById('canvas');
-var info = document.getElementById('info');
+const UP_ARROWHEAD = '&#8963;';
+const DOWN_ARROWHEAD = '&#8964;';
+
+const canvas = document.getElementById('canvas');
+const infoPanel = document.getElementById('infoPanel');
+const info = document.getElementById('info');
+const toggleInfoButton = document.getElementById('toggleInfoButton');
 
 var gui;
 var restarter;
@@ -15,8 +20,34 @@ var options = {
 };
 var autoRestartTimer;
 
+var infoVisible;
+
+function showInfo() {
+        info.style.height = 'auto';
+        info.style.padding = '10px';
+        toggleInfoButton.innerHTML = UP_ARROWHEAD;
+        infoVisible = true;
+}
+
+function hideInfo() {
+        info.style.height = '0';
+        info.style.padding = '0px';
+        toggleInfoButton.innerHTML = DOWN_ARROWHEAD;
+        infoVisible = false;
+}
+
+function toggleInfo() {
+        if (infoVisible) {
+                hideInfo();
+        } else {
+                showInfo();
+        }
+}
+
 const gl = canvas.getContext('webgl2');
 if (gl) {
+        showInfo();
+        
         //const pixelRatio = window.devicePixelRatio || 1;
         //console.log('window.devicePixelRatio', window.devicePixelRatio);
         canvas.style.width = window.innerWidth;
@@ -26,7 +57,7 @@ if (gl) {
         var rect = canvas.getBoundingClientRect();
     
         function updateFontColor() {
-                info.style.color = universe.lightMode ? '#000000' : '#ffffff';
+                infoPanel.style.color = universe.lightMode ? '#000000' : '#ffffff';
         }
     
         restarter = {restart: restart};
