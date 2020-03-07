@@ -461,7 +461,7 @@ class Universe {
                 return out;
         }
         
-        recenter(animate = true, updateMVP) {
+        recenter(animate = true) {
                 if (animate) {
                         this.recenterStart = this.centerTranslation;
                         this.negativeAvgBlackHolePos(this.recenterEnd);
