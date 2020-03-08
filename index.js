@@ -89,10 +89,12 @@ if (gl) {
         document.body.appendChild(stats.dom);
     
         function restart() {
+                clearTimeout(autoRestartTimer);
                 universe = new Universe(gl, universe);
+                const guiClosed = gui.closed;
                 gui.destroy();
                 createControls(universe);
-                clearTimeout(autoRestartTimer);
+                gui.closed = guiClosed;
                 if (options.autoRestart) {
                         startAutoRestartTimer();
                 }
