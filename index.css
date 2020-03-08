@@ -31,11 +31,14 @@ canvas {
 #toggleInfoButton {
         background-color: rgba(255, 255, 255, 0.0);
         cursor: pointer;
-        height: 14pt;
+        font-size: 11px;
+        font-family: Lucida Grande, sans-serif;
+        line-height: 19px;
+        height: 20px;
 }
 
 #toggleInfoButton:hover {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: rgba(255, 255, 255, 0.075);
 }
 
 .errmsg {

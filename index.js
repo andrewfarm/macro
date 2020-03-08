@@ -1,8 +1,5 @@
 const MOUSE_SENSITITVITY = 0.005;
 
-const UP_ARROWHEAD = '&#8963;';
-const DOWN_ARROWHEAD = '&#8964;';
-
 const canvas = document.getElementById('canvas');
 const infoPanel = document.getElementById('infoPanel');
 const info = document.getElementById('info');
@@ -25,14 +22,14 @@ var infoVisible;
 function showInfo() {
         info.style.height = 'auto';
         info.style.padding = '10px';
-        toggleInfoButton.innerHTML = UP_ARROWHEAD;
+        toggleInfoButton.innerHTML = 'Hide Info';
         infoVisible = true;
 }
 
 function hideInfo() {
         info.style.height = '0';
         info.style.padding = '0px';
-        toggleInfoButton.innerHTML = DOWN_ARROWHEAD;
+        toggleInfoButton.innerHTML = 'Show Info';
         infoVisible = false;
 }
 
