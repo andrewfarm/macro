@@ -272,7 +272,7 @@ class Universe {
                 this.setOption(options, 'bounds', DEFAULT_BOUNDS, 'number');
                 this.setOption(options, 'maxGalaxySpeed', DEFAULT_MAX_GALAXY_SPEED, 'number');
                 this.setOption(options, 'speed', DEFAULT_SPEED, 'number');
-                this.setOption(options, 'autoCenter', false, 'boolean');
+                this.setOption(options, 'autoCenter', true, 'boolean');
                 this.setOption(options, 'blur', false, 'boolean');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
