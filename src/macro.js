@@ -160,7 +160,22 @@ void main() {\n\
 }\n\
 ';
 
-const SCREEN_FRAG = '\
+const NO_EFFECTS_FRAG = '\
+#version 300 es\n\
+precision mediump float;\n\
+\n\
+uniform sampler2D u_screen_texture;\n\
+\n\
+in vec2 v_tex_pos;\n\
+\n\
+out vec4 fragColor;\n\
+\n\
+void main() {\n\
+        fragColor = vec4(texture(u_screen_texture, v_tex_pos).rgb, 1.0);\n\
+}\n\
+';
+
+const HDR_FRAG = '\
 #version 300 es\n\
 define_light_mode\n\
 \n\
@@ -311,8 +326,9 @@ class Universe {
                         STAR_UPDATE_FRAG.replace(/bh_count_to_replace/, this.blackHoles.length));
                 this.starUpdateShaderProgram.u_bh_pos = gl.getUniformLocation(
                         this.starUpdateShaderProgram.program, 'u_bh_pos[0]');
-                this.screenShaderProgramDark = createProgram(gl, QUAD_VERT, SCREEN_FRAG.replace(/define_light_mode/, ''));
-                this.screenShaderProgramLight = createProgram(gl, QUAD_VERT, SCREEN_FRAG.replace(/define_light_mode/, '#define LIGHT_MODE'));
+                this.noEffectsShaderProgram = createProgram(gl, QUAD_VERT, NO_EFFECTS_FRAG);
+                this.hdrShaderProgramDark = createProgram(gl, QUAD_VERT, HDR_FRAG.replace(/define_light_mode/, ''));
+                this.hdrShaderProgramLight = createProgram(gl, QUAD_VERT, HDR_FRAG.replace(/define_light_mode/, '#define LIGHT_MODE'));
                 this.fadeShaderProgram = createProgram(gl, QUAD_VERT, FADE_FRAG);
                 
                 this.blackHolePositions = new Float32Array(this.blackHoles.length * 3);
@@ -512,7 +528,7 @@ class Universe {
         draw() {
                 const gl = this.gl;
             
-                this.readyDraw(this.hdr ? this.screenBuf : null);
+                this.readyDraw(this.screenBuf);
                 
                 if (this.blur) {
                         gl.useProgram(this.fadeShaderProgram.program);
@@ -532,23 +548,27 @@ class Universe {
                 
                 this.drawStars();
 
-                if (this.hdr) {
-                        // do postprocessing & render to screen
-                        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                        if (!this.blur) {
-                                gl.clear(gl.COLOR_BUFFER_BIT);
-                        }
-                        gl.disable(gl.DEPTH_TEST);
-                        let screenShaderProgram = this.lightMode ? this.screenShaderProgramLight : this.screenShaderProgramDark;
-                        gl.useProgram(screenShaderProgram.program);
-                        bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
-                        gl.uniform1i(screenShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
-                        gl.uniform1f(screenShaderProgram.u_hdr_exposure, this.hdrExposure);
-                        gl.bindVertexArray(this.quadVAO);
-                        gl.drawArrays(gl.TRIANGLES, 0, 6);
-                        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                        gl.bindVertexArray(null);
+                // do postprocessing & render to screen
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                if (!this.blur) {
+                        gl.clear(gl.COLOR_BUFFER_BIT);
                 }
+                gl.disable(gl.DEPTH_TEST);
+                if (this.hdr) {
+                        const hdrShaderProgram = this.lightMode ? this.hdrShaderProgramLight : this.hdrShaderProgramDark;
+                        gl.useProgram(hdrShaderProgram.program);
+                        bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
+                        gl.uniform1i(hdrShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
+                        gl.uniform1f(hdrShaderProgram.u_hdr_exposure, this.hdrExposure);
+                } else {
+                        gl.useProgram(this.noEffectsShaderProgram.program);
+                        bindTexture(gl, this.screenTexture, SCREEN_TEXTURE_UNIT);
+                        gl.uniform1i(this.noEffectsShaderProgram.u_screen_texture, SCREEN_TEXTURE_UNIT);
+                }
+                gl.bindVertexArray(this.quadVAO);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.bindVertexArray(null);
 
                 if (this.showBlackHoles) {
                         this.drawBlackHoles();
