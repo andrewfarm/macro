@@ -184,6 +184,21 @@ void main() {\n\
 }\n\
 ';
 
+const FADE_FRAG = '\
+#version 300 es\n\
+\n\
+precision mediump float;\n\
+\n\
+uniform vec3 u_rgb;\n\
+uniform float u_alpha;\n\
+\n\
+out vec4 fragColor;\n\
+\n\
+void main() {\n\
+        fragColor = vec4(u_rgb, u_alpha);\n\
+}\n\
+';
+
 function randInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -243,6 +258,7 @@ class Universe {
                 this.setOption(options, 'maxGalaxySpeed', DEFAULT_MAX_GALAXY_SPEED, 'number');
                 this.setOption(options, 'speed', DEFAULT_SPEED, 'number');
                 this.setOption(options, 'autoCenter', false, 'boolean');
+                this.setOption(options, 'blur', false, 'boolean');
                 this.starCount = this.galaxies * this.starsPerGalaxy;
                 
                 this.centerTranslation = vec3.create();
@@ -297,6 +313,7 @@ class Universe {
                         this.starUpdateShaderProgram.program, 'u_bh_pos[0]');
                 this.screenShaderProgramDark = createProgram(gl, QUAD_VERT, SCREEN_FRAG.replace(/define_light_mode/, ''));
                 this.screenShaderProgramLight = createProgram(gl, QUAD_VERT, SCREEN_FRAG.replace(/define_light_mode/, '#define LIGHT_MODE'));
+                this.fadeShaderProgram = createProgram(gl, QUAD_VERT, FADE_FRAG);
                 
                 this.blackHolePositions = new Float32Array(this.blackHoles.length * 3);
                 this.blackHolePosBuffer = gl.createBuffer();
@@ -496,12 +513,31 @@ class Universe {
                 const gl = this.gl;
             
                 this.readyDraw(this.hdr ? this.screenBuf : null);
+                
+                if (this.blur) {
+                        gl.useProgram(this.fadeShaderProgram.program);
+                        this.lightMode ?
+                                gl.uniform3f(this.fadeShaderProgram.u_rgb, 1.0, 1.0, 1.0) :
+                                gl.uniform3f(this.fadeShaderProgram.u_rgb, 0.0, 0.0, 0.0);
+                        gl.uniform1f(this.fadeShaderProgram.u_alpha, 0.1);
+                        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                        gl.bindVertexArray(this.quadVAO);
+                        gl.drawArrays(gl.TRIANGLES, 0, 6);
+                        gl.bindVertexArray(null);
+                }
+                
+                this.lightMode ?
+                        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA) :
+                        gl.blendFunc(gl.ONE, gl.ONE);
+                
                 this.drawStars();
-            
+
                 if (this.hdr) {
                         // do postprocessing & render to screen
                         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                        gl.clear(gl.COLOR_BUFFER_BIT);
+                        if (!this.blur) {
+                                gl.clear(gl.COLOR_BUFFER_BIT);
+                        }
                         gl.disable(gl.DEPTH_TEST);
                         let screenShaderProgram = this.lightMode ? this.screenShaderProgramLight : this.screenShaderProgramDark;
                         gl.useProgram(screenShaderProgram.program);
@@ -513,7 +549,7 @@ class Universe {
                         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                         gl.bindVertexArray(null);
                 }
-            
+
                 if (this.showBlackHoles) {
                         this.drawBlackHoles();
                 }
@@ -526,9 +562,6 @@ class Universe {
 //                gl.enable(gl.DEPTH_TEST); //experimental
 //                gl.depthFunc(gl.LESS); //experimental
 //                gl.clear(gl.DEPTH_BUFFER_BIT); //experimental
-                this.lightMode ?
-                        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA) :
-                        gl.blendFunc(gl.ONE, gl.ONE);
                 gl.disable(gl.STENCIL_TEST);
                 
                 gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -536,7 +569,9 @@ class Universe {
                 this.lightMode ?
                         gl.clearColor(1, 1, 1, 1) :
                         gl.clearColor(0, 0, 0, 1);
-                gl.clear(gl.COLOR_BUFFER_BIT);
+                if (!this.blur) {
+                        gl.clear(gl.COLOR_BUFFER_BIT);
+                }
         }
         
         drawLayers(numLayers) {

@@ -71,6 +71,7 @@ if (gl) {
                 gui.add(universe, 'starSize', 100, 5000);
                 gui.add(universe, 'starIntensity', 0.05, 0.5);
                 gui.add(universe, 'showBlackHoles');
+                gui.add(universe, 'blur');
                 gui.add(universe, 'recenter');
                 gui.add(universe, 'autoCenter');
                 gui.add(options, 'autoRestart').onFinishChange(restartAutoRestartTimer);
